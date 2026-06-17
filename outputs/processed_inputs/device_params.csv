@@ -1,0 +1,18 @@
+﻿category,name_cn,parameter,unit,value,sensitivity_range,source_attribute,source_url,description
+规模,风电装机,wind_capacity_kW,kW,10000.0,"5,000-20,000",本项目缩放假设,https://www.ordos.gov.cn/xw_127672/jreeds/202504/t20250407_3780540.html,真实园区有更大规模风光储；仿真取10MW便于计算
+规模,光伏装机,pv_capacity_kW,kW,8000.0,"4,000-20,000",本项目缩放假设,https://www.ordos.gov.cn/xw_127672/jreeds/202504/t20250407_3780540.html,用于PV可发功率=装机*PV_CF
+电储能,额定功率,battery_power_kW,kW,5000.0,"2,000-10,000",工程假设/NREL ATB,https://data.openei.org/submissions/6006,充放电功率上限
+电储能,额定容量,battery_energy_kWh,kWh,10000.0,"4,000-30,000",工程假设/NREL ATB,https://data.openei.org/submissions/6006,SOC上限
+电储能,充电效率,battery_eta_ch,-,0.95,0.90-0.97,常用假设/NREL储能资料,https://data.openei.org/submissions/6006,SOC动态
+电储能,放电效率,battery_eta_dis,-,0.95,0.90-0.97,常用假设/NREL储能资料,https://data.openei.org/submissions/6006,SOC动态
+电储能,初始SOC,battery_initial_soc,kWh,5000.0,20%-80%容量,本项目假设,本表设定,末端SOC可设为等于初始SOC
+氢能,电解槽额定功率,electrolyzer_power_kW,kW,2000.0,"1,000-10,000",工程假设/文献,https://www.hydrogen.energy.gov/docs/hydrogenprogramlibraries/pdfs/24005-clean-hydrogen-production-cost-pem-electrolyzer.pdf,耗电制氢上限
+氢能,电解槽耗电量,electrolyzer_kWh_per_kgH2,kWh/kgH2,52.0,45-60,DOE/IRENA,https://www.hydrogen.energy.gov/docs/hydrogenprogramlibraries/pdfs/24005-clean-hydrogen-production-cost-pem-electrolyzer.pdf,制氢量=耗电量/该值
+氢能,储氢容量,h2_storage_capacity_kg,kg,1000.0,300-5000,工程假设,本表设定,储氢罐库存上限
+氢能,初始储氢量,h2_storage_initial_kg,kg,300.0,20%-80%容量,本项目假设,本表设定,可设末端等于初始
+氢能,燃料电池额定功率,fuel_cell_power_kW,kW,1000.0,500-5000,工程假设/DOE,https://www.nea.gov.cn/20250430/96022785b3a747248288ad1c57d3a025/83d863317f2f44edb605348e4de40993.pdf,氢转电上限
+氢能,燃料电池电效率,fuel_cell_kWh_per_kgH2,kWh/kgH2,18.0,16-22,工程假设/DOE目标,https://www.nea.gov.cn/20250430/96022785b3a747248288ad1c57d3a025/83d863317f2f44edb605348e4de40993.pdf,发电量=耗氢量*该值
+热力,热泵额定电功率,heat_pump_power_kW,kW,3000.0,"1,000-6,000",工程假设,https://www.iea.org/reports/the-future-of-heat-pumps/how-a-heat-pump-works,耗电上限
+热力,热泵COP,heat_pump_COP,-,3.0,2.2-3.8,IEA/文献综述,https://arxiv.org/abs/2102.09797,供热=耗电*COP
+热力,燃气锅炉最大供热,gas_boiler_heat_kW,kWth,8000.0,"4,000-12,000",工程假设/锅炉文献,https://eri.usst.edu.cn/html/2021/1/20210104.htm,备用热源
+热力,燃气锅炉效率,gas_boiler_eff,-,0.92,0.88-0.95,文献/工程假设,https://eri.usst.edu.cn/html/2021/1/20210104.htm,气耗=供热/(LHV*效率)

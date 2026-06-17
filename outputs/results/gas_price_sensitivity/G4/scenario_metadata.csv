@@ -1,0 +1,2 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+G4,2.0 倍,gas_price_sensitivity,天然气价格敏感性,S5,天然气价格倍率,2.0

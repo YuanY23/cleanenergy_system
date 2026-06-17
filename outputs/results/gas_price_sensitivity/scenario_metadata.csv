@@ -1,0 +1,6 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+G0,0.8 倍,gas_price_sensitivity,天然气价格敏感性,S5,天然气价格倍率,0.8
+G1,1.0 倍,gas_price_sensitivity,天然气价格敏感性,S5,天然气价格倍率,1.0
+G2,1.2 倍,gas_price_sensitivity,天然气价格敏感性,S5,天然气价格倍率,1.2
+G3,1.5 倍,gas_price_sensitivity,天然气价格敏感性,S5,天然气价格倍率,1.5
+G4,2.0 倍,gas_price_sensitivity,天然气价格敏感性,S5,天然气价格倍率,2.0

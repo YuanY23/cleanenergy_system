@@ -1,0 +1,2 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+CAP4,60%,carbon_cap_sensitivity,碳排放上限敏感性,S5,碳排放上限比例,0.6

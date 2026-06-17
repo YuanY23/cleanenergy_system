@@ -1,0 +1,2 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+B4,2.0 倍,battery_capacity_sensitivity,电池容量敏感性,S5,电池容量倍率,2.0

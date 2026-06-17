@@ -1,0 +1,2 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+HS3,2.0 倍,h2_storage_capacity_sensitivity,储氢罐容量敏感性,S5,储氢罐容量倍率,2.0

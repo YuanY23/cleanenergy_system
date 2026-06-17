@@ -1,0 +1,2 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+C1,30 元/tCO2,carbon_price_sensitivity,碳价敏感性,S5,碳价/(元/tCO2),30.0

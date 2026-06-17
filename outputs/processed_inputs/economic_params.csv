@@ -1,0 +1,11 @@
+﻿category,name_cn,parameter,unit,value,sensitivity_range,source_attribute,source_url,description
+能源价格,平段电价,flat_electricity_price,元/kWh,0.55,0.40-0.80,假设+蒙西分时倍率,https://fgw.xlgl.gov.cn/fgw/ywgz/jgsf/zcfg/2024042615402690396/index.html,峰谷按政策倍率生成
+能源价格,天然气价格,gas_price,元/m3,3.0,2.0-4.5,假设,本表设定,用于燃气锅炉成本
+能源价格,售氢价格,h2_sale_price,元/kg,35.0,20-50,中国氢能发展报告,https://www.nea.gov.cn/20250430/96022785b3a747248288ad1c57d3a025/83d863317f2f44edb605348e4de40993.pdf,用于售氢收益/敏感性
+碳价,碳价,carbon_price,元/tCO2,62.4,0-200,碳市场报告,https://ceep.bit.edu.cn/docs//2026-01/f57b33752f304d539c4d990b10a6eb63.pdf,基准值取2025全国碳市场均价
+碳排放,购电排放因子,grid_emission_factor,kgCO2/kWh,0.6479,0.5306全国/0.6479内蒙古/0.9531华北OM,官方,https://www.mee.gov.cn/xxgk2018/xxgk/xxgk01/202512/W020251231726284332528.pdf,主模型使用内蒙古省级平均因子
+碳排放,天然气排放因子,gas_emission_factor,kgCO2/m3,2.16,1.9-2.3,IPCC/WRI常用近似,https://eri.usst.edu.cn/html/2021/1/20210104.htm,本项目运行排放估算用，后续可替换为国家核算指南
+惩罚成本,弃风弃光惩罚,curtail_penalty,元/kWh,0.1,0-0.5,模型假设,本表设定,引导提高消纳率，可做敏感性
+运维成本,电池运维,battery_om,元/kWh throughput,0.01,0.005-0.03,模型假设/NREL ATB,https://data.openei.org/submissions/6006,简化可变运维成本
+运维成本,电解槽运维,electrolyzer_om,元/kgH2,1.0,0.5-3.0,模型假设,https://www.hydrogen.energy.gov/docs/hydrogenprogramlibraries/pdfs/24005-clean-hydrogen-production-cost-pem-electrolyzer.pdf,简化可变运维成本
+运维成本,燃料电池运维,fuel_cell_om,元/kWh,0.05,0.02-0.15,模型假设,https://www.nea.gov.cn/20250430/96022785b3a747248288ad1c57d3a025/83d863317f2f44edb605348e4de40993.pdf,简化可变运维成本

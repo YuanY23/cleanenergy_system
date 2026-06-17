@@ -1,0 +1,6 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+CAP0,100%,carbon_cap_sensitivity,碳排放上限敏感性,S5,碳排放上限比例,1.0
+CAP1,90%,carbon_cap_sensitivity,碳排放上限敏感性,S5,碳排放上限比例,0.9
+CAP2,80%,carbon_cap_sensitivity,碳排放上限敏感性,S5,碳排放上限比例,0.8
+CAP3,70%,carbon_cap_sensitivity,碳排放上限敏感性,S5,碳排放上限比例,0.7
+CAP4,60%,carbon_cap_sensitivity,碳排放上限敏感性,S5,碳排放上限比例,0.6

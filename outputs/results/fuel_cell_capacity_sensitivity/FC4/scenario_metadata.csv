@@ -1,0 +1,2 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+FC4,2.0 倍,fuel_cell_capacity_sensitivity,燃料电池容量敏感性,S5,燃料电池容量倍率,2.0

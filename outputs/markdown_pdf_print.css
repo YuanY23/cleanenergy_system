@@ -1,0 +1,143 @@
+@page {
+  size: A4;
+  margin: 18mm 17mm 18mm 17mm;
+}
+
+html {
+  color: #111;
+  background: #fff;
+  font-family: "Noto Serif SC", "Microsoft YaHei", "SimSun", serif;
+  font-size: 11.5pt;
+  line-height: 1.72;
+}
+
+body {
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+h1, h2, h3, h4 {
+  font-family: "Noto Sans SC", "Microsoft YaHei", "SimHei", sans-serif;
+  color: #0f172a;
+  line-height: 1.35;
+  break-after: avoid;
+}
+
+h1 {
+  font-size: 22pt;
+  margin: 0 0 18pt;
+  text-align: center;
+}
+
+h2 {
+  font-size: 16pt;
+  margin: 22pt 0 10pt;
+  border-bottom: 1px solid #d7dde8;
+  padding-bottom: 4pt;
+}
+
+h3 {
+  font-size: 13.5pt;
+  margin: 17pt 0 8pt;
+}
+
+h4 {
+  font-size: 12pt;
+  margin: 13pt 0 6pt;
+}
+
+p {
+  margin: 0 0 9pt;
+  text-align: justify;
+}
+
+blockquote {
+  margin: 0 0 14pt;
+  padding: 8pt 12pt;
+  border-left: 3pt solid #64748b;
+  background: #f8fafc;
+}
+
+ul, ol {
+  margin-top: 0;
+  padding-left: 1.7em;
+}
+
+li {
+  margin: 3pt 0;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12pt 0;
+  font-size: 9.5pt;
+  break-inside: avoid;
+}
+
+th, td {
+  border: 1px solid #cbd5e1;
+  padding: 5pt 6pt;
+  vertical-align: top;
+}
+
+th {
+  background: #f1f5f9;
+  font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+}
+
+code, pre {
+  font-family: "Consolas", "Noto Sans Mono CJK SC", monospace;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid #d7dde8;
+  background: #f8fafc;
+  padding: 9pt;
+  font-size: 8.8pt;
+  line-height: 1.35;
+  break-inside: avoid;
+}
+
+a {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+img, svg {
+  max-width: 100%;
+}
+
+.math.display {
+  display: block;
+  overflow-x: visible;
+  margin: 10pt 0 12pt;
+  text-align: center;
+}
+
+.mjx-container {
+  outline: 0;
+}
+
+.mjx-container[jax="CHTML"][display="true"] {
+  margin: 0.75em 0 !important;
+  overflow: visible !important;
+}
+
+.mjx-container[jax="CHTML"][display="true"] mjx-math {
+  font-size: 95% !important;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #d7dde8;
+  margin: 16pt 0;
+}
+
+@media print {
+  h1, h2, h3, h4, table, pre, blockquote {
+    break-inside: avoid;
+  }
+}

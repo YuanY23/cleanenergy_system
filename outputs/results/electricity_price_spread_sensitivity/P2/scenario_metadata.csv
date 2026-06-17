@@ -1,0 +1,2 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+P2,谷价0.8倍/峰价1.2倍,electricity_price_spread_sensitivity,电价峰谷差敏感性,S5,峰谷价差指数,1.4999999999999998

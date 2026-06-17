@@ -1,0 +1,2 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+E3,1.2 倍,grid_emission_factor_sensitivity,电网排放因子敏感性,S5,电网排放因子倍率,1.2

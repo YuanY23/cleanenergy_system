@@ -1,0 +1,5 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+RC0,90%,renewable_consumption_constraint_sensitivity,新能源消纳率约束敏感性,S5,最低新能源消纳率,0.9
+RC1,95%,renewable_consumption_constraint_sensitivity,新能源消纳率约束敏感性,S5,最低新能源消纳率,0.95
+RC2,98%,renewable_consumption_constraint_sensitivity,新能源消纳率约束敏感性,S5,最低新能源消纳率,0.98
+RC3,99%,renewable_consumption_constraint_sensitivity,新能源消纳率约束敏感性,S5,最低新能源消纳率,0.99

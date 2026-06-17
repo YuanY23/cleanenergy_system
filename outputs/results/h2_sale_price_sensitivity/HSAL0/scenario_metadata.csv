@@ -1,0 +1,2 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+HSAL0,0 元/kg,h2_sale_price_sensitivity,售氢价格敏感性,S5,售氢价格/(元/kg),0.0

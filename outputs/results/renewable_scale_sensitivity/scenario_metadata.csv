@@ -1,0 +1,7 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+R0,0.6 倍,renewable_scale_sensitivity,新能源出力比例敏感性,S5,风光可发功率倍率,0.6
+R1,0.8 倍,renewable_scale_sensitivity,新能源出力比例敏感性,S5,风光可发功率倍率,0.8
+R2,1.0 倍,renewable_scale_sensitivity,新能源出力比例敏感性,S5,风光可发功率倍率,1.0
+R3,1.2 倍,renewable_scale_sensitivity,新能源出力比例敏感性,S5,风光可发功率倍率,1.2
+R4,1.5 倍,renewable_scale_sensitivity,新能源出力比例敏感性,S5,风光可发功率倍率,1.5
+R5,2.0 倍,renewable_scale_sensitivity,新能源出力比例敏感性,S5,风光可发功率倍率,2.0

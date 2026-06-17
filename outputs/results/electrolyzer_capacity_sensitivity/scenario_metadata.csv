@@ -1,0 +1,6 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+EL0,0.5 倍,electrolyzer_capacity_sensitivity,电解槽容量敏感性,S5,电解槽功率倍率,0.5
+EL1,1.0 倍,electrolyzer_capacity_sensitivity,电解槽容量敏感性,S5,电解槽功率倍率,1.0
+EL2,1.5 倍,electrolyzer_capacity_sensitivity,电解槽容量敏感性,S5,电解槽功率倍率,1.5
+EL3,2.0 倍,electrolyzer_capacity_sensitivity,电解槽容量敏感性,S5,电解槽功率倍率,2.0
+EL4,3.0 倍,electrolyzer_capacity_sensitivity,电解槽容量敏感性,S5,电解槽功率倍率,3.0

@@ -1,0 +1,6 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+HSAL0,0 元/kg,h2_sale_price_sensitivity,售氢价格敏感性,S5,售氢价格/(元/kg),0.0
+HSAL1,10 元/kg,h2_sale_price_sensitivity,售氢价格敏感性,S5,售氢价格/(元/kg),10.0
+HSAL2,20 元/kg,h2_sale_price_sensitivity,售氢价格敏感性,S5,售氢价格/(元/kg),20.0
+HSAL3,30 元/kg,h2_sale_price_sensitivity,售氢价格敏感性,S5,售氢价格/(元/kg),30.0
+HSAL4,40 元/kg,h2_sale_price_sensitivity,售氢价格敏感性,S5,售氢价格/(元/kg),40.0

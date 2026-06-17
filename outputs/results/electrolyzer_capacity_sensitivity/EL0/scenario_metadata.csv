@@ -1,0 +1,2 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+EL0,0.5 倍,electrolyzer_capacity_sensitivity,电解槽容量敏感性,S5,电解槽功率倍率,0.5

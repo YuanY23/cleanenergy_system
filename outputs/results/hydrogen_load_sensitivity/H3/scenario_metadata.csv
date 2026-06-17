@@ -1,0 +1,2 @@
+﻿scenario_id,case_label,study_id,study_title,base_scenario_id,x_label,x_value
+H3,1.5 倍,hydrogen_load_sensitivity,氢负荷敏感性,S5,氢负荷倍率,1.5

@@ -1,0 +1,918 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN" xml:lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>鄂尔多斯零碳园区综合能源系统研究报告</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+  </style>
+  <link rel="stylesheet" href=".\outputs\markdown_pdf_print.css" />
+  <script
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"
+  type="text/javascript"></script>
+</head>
+<body>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a
+href="#鄂尔多斯零碳园区电-热-氢-储综合能源系统低碳经济优化调度与容量规划研究报告"
+id="toc-鄂尔多斯零碳园区电-热-氢-储综合能源系统低碳经济优化调度与容量规划研究报告">鄂尔多斯零碳园区电-热-氢-储综合能源系统低碳经济优化调度与容量规划研究报告</a>
+<ul>
+<li><a href="#摘要" id="toc-摘要">摘要</a></li>
+<li><a href="#研究背景与多能流耦合机理"
+id="toc-研究背景与多能流耦合机理">1. 研究背景与多能流耦合机理</a></li>
+<li><a href="#研究目的与面临的技术瓶颈"
+id="toc-研究目的与面临的技术瓶颈">2. 研究目的与面临的技术瓶颈</a></li>
+<li><a href="#多能流网络架构与数学模型构建"
+id="toc-多能流网络架构与数学模型构建">3.
+多能流网络架构与数学模型构建</a>
+<ul>
+<li><a href="#运行层日前协同调度模型day-ahead-operation-optimization"
+id="toc-运行层日前协同调度模型day-ahead-operation-optimization">3.1
+运行层日前协同调度模型（Day-Ahead Operation Optimization）</a></li>
+<li><a
+href="#规划-运行一体化确定性容量规划模型two-stage-capacity-planning"
+id="toc-规划-运行一体化确定性容量规划模型two-stage-capacity-planning">3.2
+规划-运行一体化确定性容量规划模型（Two-Stage Capacity
+Planning）</a></li>
+<li><a href="#投资参数敏感性与多目标-pareto-帕累托前沿分析方法"
+id="toc-投资参数敏感性与多目标-pareto-帕累托前沿分析方法">3.3
+投资参数敏感性与多目标 Pareto 帕累托前沿分析方法</a></li>
+<li><a href="#不确定性建模与稳健规划方法"
+id="toc-不确定性建模与稳健规划方法">3.4
+不确定性建模与稳健规划方法</a></li>
+</ul></li>
+<li><a href="#研究结果与量化分析" id="toc-研究结果与量化分析">4.
+研究结果与量化分析</a>
+<ul>
+<li><a href="#日前优化调度基础场景-s0-s5-量化结果与分析"
+id="toc-日前优化调度基础场景-s0-s5-量化结果与分析">4.1
+日前优化调度基础场景 S0-S5 量化结果与分析</a></li>
+<li><a href="#确定性容量规划最优装机配置"
+id="toc-确定性容量规划最优装机配置">4.2
+确定性容量规划最优装机配置</a></li>
+<li><a href="#投资造价波动敏感性规律与-pareto-前沿"
+id="toc-投资造价波动敏感性规律与-pareto-前沿">4.4
+投资造价波动敏感性规律与 Pareto 前沿</a></li>
+<li><a href="#确定性方案压力测试脆弱性诊断"
+id="toc-确定性方案压力测试脆弱性诊断">4.5
+确定性方案压力测试（脆弱性诊断）</a></li>
+<li><a href="#确定性随机与最坏情形鲁棒容量配置对比"
+id="toc-确定性随机与最坏情形鲁棒容量配置对比">4.6
+确定性、随机与最坏情形鲁棒容量配置对比</a></li>
+</ul></li>
+<li><a href="#讨论与工程应用评价" id="toc-讨论与工程应用评价">5.
+讨论与工程应用评价</a>
+<ul>
+<li><a href="#关键设备在多能流网络中的系统定位"
+id="toc-关键设备在多能流网络中的系统定位">5.1
+关键设备在多能流网络中的系统定位</a></li>
+<li><a href="#决策矩阵的选用与风险管理"
+id="toc-决策矩阵的选用与风险管理">5.2 决策矩阵的选用与风险管理</a></li>
+</ul></li>
+<li><a href="#研究结论" id="toc-研究结论">6. 研究结论</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1
+id="鄂尔多斯零碳园区电-热-氢-储综合能源系统低碳经济优化调度与容量规划研究报告">鄂尔多斯零碳园区电-热-氢-储综合能源系统低碳经济优化调度与容量规划研究报告</h1>
+<blockquote>
+<p><strong>项目工作路径</strong>：<code>E:\clean_engry_system</code><br />
+<strong>论文主题</strong>：零碳园区多能流系统运行调度、容量配置与不确定性防范优化研究<br />
+<strong>核心工具</strong>：Python + Pyomo (Active Constraints Builder) +
+HiGHS Solver<br />
+<strong>数据包</strong>：鄂尔多斯零碳园区电热氢储优化调度数据包（包含分时电价、天然气价格、气象出力时间序列、设备及经济参数表）<br />
+<strong>文档版本</strong>：项目总结 v0.1（全面独立源码重构版）</p>
+</blockquote>
+<hr />
+<h2 id="摘要">摘要</h2>
+<p>为攻克零碳园区多能耦合系统在源荷波动性与强物理约束下的低碳经济运行与规划选型瓶颈，本研究基于混合整数线性规划（MILP）方法，构建了包含日前经济调度、规划-运行一体化确定性容量规划、Pareto
+成本-排放权衡分析，以及抵御气候波动的随机与最坏情形鲁棒优化的全层级优化建模体系。</p>
+<p>研究首先建立园区日前多能流耦合网络拓扑，定量论证了“风光-电池-电解槽-热泵”在日前运行层降本降碳的贡献。随后，在考虑资本回收系数（CRF）的容量规划中，协同决策了
+7
+类关键设备的装机规模与多季节典型日（夏、冬、过渡季）联合运行策略。针对规划方案的抗风险能力，本研究通过“先规划后扰动”的压力测试揭示了确定性最优方案的脆弱性，并以此设计了
+18 场景概率加权随机容量规划与 minimax 鲁棒容量规划模型。</p>
+<p>量化结果表明：空气源热泵的电热高效转换可实现园区天然气的完全替代，使直接化石能源消耗与排放降为
+0；在确定性容量规划下，最优配置年总成本为 1847.76 万元，年碳排放 146.67
+万 kgCO₂，新能源消纳率为 97.72%；多目标 Pareto
+权衡曲线显示系统具有极佳的降碳弹性，碳约束收紧 60% 时年总成本仅微升
+1.57%；在面对风电出力偏低等气候不确定性扰动时，确定性容量方案会面临年成本飙升
+52.19% 与排放暴涨 822.79%
+的双重风险。通过引入鲁棒容量规划，系统采取“<strong>源侧超配（风电装机升至上限
+30 MW）+ 转化装置扩容（电解槽增至 3.8 MW）+
+电池储能容量收缩</strong>”的配置重组策略，成功将最坏扰动情形下的年度总成本控制在
+2787.76
+万元的确定性上界内。本研究提出的三级决策优化模型为零碳园区综合能源系统的规划决策提供了理论基础。</p>
+<p><strong>关键词</strong>：零碳园区；综合能源系统；电-热-氢-储多能流；混合整数线性规划；容量规划；Pareto
+分析；随机容量规划；鲁棒容量规划</p>
+<hr />
+<h2 id="研究背景与多能流耦合机理">1. 研究背景与多能流耦合机理</h2>
+<p>在我国能源结构从化石能源主导向以新能源为主体的新型电力系统转型的进程中，工业园区作为能源消费的集中端，面临着极大的节能减排与新能源消纳压力。零碳园区通过在内部部署大规模分布式风电、光伏发电，并结合电化学储能、氢能转化与热能电气化装置，旨在实现园区整体能量供给的零碳化和经济最优。</p>
+<p>然而，零碳园区综合能源系统（IES）中“电-热-氢-储”多能流之间存在极强的物理互补与时间耦合特征：
+1.
+<strong>电能网络</strong>：作为核心枢纽，新能源电力除直接响应刚性电负荷外，还需驱动空气源热泵产热、驱动电解槽制氢，以及实现电池储能的吞吐调峰。
+2.
+<strong>热能支路</strong>：园区通常存在稳定的供暖或低品位工艺热需求。空气源热泵（HP）以其高制热系数（COP）成为电能转化为热能的高效枢纽，并与传统燃气锅炉（GB）共同承担热平衡，实现化石能源（天然气）的终端电能替代。
+3.
+<strong>氢能闭环</strong>：电解槽（EL）利用多余的新能源电力或低谷网电制取氢气，进入储氢罐（HS）进行跨时步动态存储。氢气不仅直接响应园区氢负荷、支持外售（H2_Sale），亦可在系统缺电或高电价时段进入燃料电池（FC）回发电，实现能量的电-氢-电闭环反馈。</p>
+<p>传统的综合能源调度往往将各个子系统割裂优化，忽视了能量转化过程中的边际效益与多次转换折损。例如，电池充电时段与电解槽制氢时段的选择不仅取决于分时电价的价差，还取决于碳排放限额与新能源弃电的惩罚。与此同时，新能源出力与负荷需求的天然波动性对系统规划提出了更高的安全要求。因此，构建一个能够在同一时间尺度上协同电、热、氢平衡约束，并可同时优化建设期容量（CAPEX）与运行期费用（OPEX）的优化分析框架，是实现园区全寿命周期低碳、安全、经济运行的关键。</p>
+<hr />
+<h2 id="研究目的与面临的技术瓶颈">2. 研究目的与面临的技术瓶颈</h2>
+<p>本研究旨在构建一个多层级综合能源优化体系，主要解决以下科学与工程应用瓶颈：</p>
+<ol type="1">
+<li><strong>日前能量管理（EMS）最优协同</strong>：在给定设备容量下，如何在包含分时电价、购气成本、弃电惩罚、碳税成本等多维度参数的目标函数中，搜寻日前
+24 小时最优的多能流转换与储能充放电策略？</li>
+<li><strong>容量规划的运行-投资协同裂解</strong>：常规容量配置采用“固定出力系数”估算，割裂了容量建设与多季节复杂运行特性的动态耦合。本研究旨在建立规划-运行一体化模型，将设备容量转化为决策变量，同时约束三个典型季节日（夏、冬、过渡季）的逐小时运行轨迹，实现全寿命
+TAC 最小。</li>
+<li><strong>多目标降碳的 Pareto
+折中面刻画</strong>：降碳深度如何定量改变系统投资结构？系统在达到“深绿色”阶段时会暴露出哪些关键的容量短板？如何刻画“年总成本
+- 年度碳排放”的最优 Pareto 前沿面？</li>
+<li><strong>确定性规划对气候扰动的脆弱性诊断</strong>：日前确定性最优容量往往将系统配置压紧至可行域边界。本研究需定量回答：若面临持续低风速、高温低辐照或冷冬热负荷骤增等预测偏差，确定性容量方案在日前运行层会面临多大的成本与排放超标风险？</li>
+<li><strong>不确定性防御方案的物理配比重组</strong>：如何基于场景概率加权随机规划和
+minimax
+鲁棒优化，分别给出平均意义上最优和极端场景下最稳健的容量规划配置？不同风险偏好下的“源-储-转化”设备配比会发生怎样的物理演变？</li>
+</ol>
+<hr />
+<h2 id="多能流网络架构与数学模型构建">3.
+多能流网络架构与数学模型构建</h2>
+<p>系统多能流拓扑网络结构如图 1 所示：</p>
+<pre class="text"><code>               外部电网购电 (P_buy)
+                     │
+                     ▼
+  风电 (P_w) ───►【电力母排】◄─── 电池放电 (P_dis) ◄─── 电池储能 (S_bat)
+  光伏 (P_pv) ───►   │  │   ◄─── 燃料电池发电 (P_fc) ◄─ 储氢罐放氢 (M_dis_H2)
+                    │  │
+             ┌──────┘  └──────┐
+             ▼                ▼
+        热泵耗电 (P_hp)   电解槽耗电 (P_el)
+             │                │
+             ▼                ▼
+        热泵供热 (Q_hp)   电解槽制氢 (M_el_H2)
+             │                │
+             ▼                ▼
+  燃气锅炉 ──►【热力母排】      【氢气母排】◄── 外部补氢 (M_buy_H2)
+  (Q_gb)            │                │
+                    ▼                ▼
+                 热负荷           氢负荷 / 外售 (M_sale_H2)</code></pre>
+<p align="center">
+<b>图 1：电-热-氢-储综合能源系统耦合网络拓扑</b>
+</p>
+<h3 id="运行层日前协同调度模型day-ahead-operation-optimization">3.1
+运行层日前协同调度模型（Day-Ahead Operation Optimization）</h3>
+<p>日前调度中设备容量固定，优化时间集为 <span class="math inline">\(t
+\in T = \{0, 1, \dots, 23\}\)</span>。</p>
+<h4 id="目标函数objective-function">3.1.1 目标函数（Objective
+Function）</h4>
+<p>日前调度以系统日前总运行费用 <span
+class="math inline">\(F_{\text{OP}}\)</span> 最小为优化目标： <span
+class="math display">\[
+\begin{aligned}
+\min F_{\text{OP}} = &amp; \sum_{t=0}^{23} \Bigl[ C_{\text{grid}, t}
+P_{\text{buy}, t} + C_{\text{gas}, t} V_{\text{gas}, t} +
+C_{\text{curt}} (P_{\text{curt\_w}, t} + P_{\text{curt\_pv}, t}) +
+C_{\text{carbon}, t} E_{\text{total}, t} \\
+&amp; + C_{\text{om\_bat}} (P_{\text{ch}, t} + P_{\text{dis}, t}) +
+C_{\text{om\_el}} M_{\text{el\_H2}, t} + C_{\text{om\_fc}} P_{\text{fc},
+t} \\
+&amp; + C_{\text{supply\_H2}} M_{\text{buy\_H2}, t} +
+C_{\text{excess\_penalty}} E_{\text{excess}, t} - C_{\text{sale\_H2}}
+M_{\text{sale\_H2}, t} \Bigr]
+\end{aligned}
+\]</span></p>
+<h4 id="多流拓扑与物理平衡约束">3.1.2 多流拓扑与物理平衡约束</h4>
+<ol type="1">
+<li><strong>电力节点实时平衡约束</strong>（Power Balance Constraint）：
+<span class="math display">\[P_{\text{buy}, t} + P_{\text{w\_use}, t} +
+P_{\text{pv\_use}, t} + P_{\text{dis}, t} + P_{\text{fc}, t} =
+P_{\text{load}, t} + P_{\text{ch}, t} + P_{\text{hp}, t} + P_{\text{el},
+t}\]</span> 其中新能源利用受可发上限约束： <span
+class="math display">\[P_{\text{w\_use}, t} + P_{\text{curt\_w}, t} =
+C_{\text{w\_fixed}} \cdot \text{cf}_{\text{w}, t}, \quad
+P_{\text{pv\_use}, t} + P_{\text{curt\_pv}, t} = C_{\text{pv\_fixed}}
+\cdot \text{cf}_{\text{pv}, t}\]</span></li>
+<li><strong>热力节点平衡约束</strong>（Heat Balance Constraint）： <span
+class="math display">\[Q_{\text{hp}, t} + Q_{\text{gb}, t} =
+Q_{\text{load}, t}\]</span> 热泵转换关系及容量上限： <span
+class="math display">\[Q_{\text{hp}, t} = P_{\text{hp}, t} \cdot
+\eta_{\text{COP}}, \quad P_{\text{hp}, t} \le
+P_{\text{hp\_max}}\]</span> 燃气锅炉耗气量及容量上限： <span
+class="math display">\[V_{\text{gas}, t} = \frac{Q_{\text{gb},
+t}}{\eta_{\text{gb}} \cdot L_{\text{gas\_lhv}}}, \quad Q_{\text{gb}, t}
+\le Q_{\text{gb\_max}}\]</span></li>
+<li><strong>氢能节点平衡约束</strong>（Hydrogen Balance Constraint）：
+<span class="math display">\[M_{\text{el\_H2}, t} + M_{\text{dis\_H2},
+t} + M_{\text{buy\_H2}, t} = M_{\text{load}, t} + M_{\text{ch\_H2}, t} +
+M_{\text{fc\_H2}, t} + M_{\text{sale\_H2}, t}\]</span>
+电解槽与燃料电池转换方程： <span
+class="math display">\[M_{\text{el\_H2}, t} = \frac{P_{\text{el},
+t}}{\sigma_{\text{el}}}, \quad P_{\text{fc}, t} = M_{\text{fc\_H2}, t}
+\cdot \sigma_{\text{fc}}\]</span>
+电解槽与燃料电池出力上限受额定容量制约。</li>
+<li><strong>动态储能状态演变约束</strong>（Storage State-of-Charge &amp;
+Pressure Inventory）： 电池能量动态（充放电效率为 <span
+class="math inline">\(\eta_{\text{ch}},
+\eta_{\text{dis}}\)</span>，充放电功率限值为 <span
+class="math inline">\(P_{\text{bat\_max}}\)</span>）： <span
+class="math display">\[S_{\text{bat}, t} = S_{\text{bat}, t-1} +
+P_{\text{ch}, t} \eta_{\text{ch}} - \frac{P_{\text{dis},
+t}}{\eta_{\text{dis}}}, \quad S_{\text{bat}, 0} = S_{\text{bat}, 23} =
+0.5 \cdot S_{\text{bat\_max}}\]</span> 储氢罐质量库存动态（充放氢限值为
+<span class="math inline">\(M_{\text{h2\_max}}\)</span>）： <span
+class="math display">\[S_{\text{h2}, t} = S_{\text{h2}, t-1} +
+M_{\text{ch\_H2}, t} - M_{\text{dis\_H2}, t}, \quad S_{\text{h2}, 0} =
+S_{\text{h2}, 23} = 0.3 \cdot S_{\text{h2\_max}}\]</span></li>
+<li><strong>系统碳排放核算约束</strong>（Carbon Emission Tracking）：
+<span class="math display">\[E_{\text{total}, t} = P_{\text{buy}, t}
+\cdot d_{\text{grid}, t} + V_{\text{gas}, t} \cdot
+d_{\text{gas}}\]</span></li>
+</ol>
+<hr />
+<h3
+id="规划-运行一体化确定性容量规划模型two-stage-capacity-planning">3.2
+规划-运行一体化确定性容量规划模型（Two-Stage Capacity Planning）</h3>
+<p>将关键设备装机容量转化为决策变量。设典型日集合为 <span
+class="math inline">\(d \in D = \{\text{Summer}, \text{Winter},
+\text{Shoulder}\}\)</span>，各典型日代表权重天数为 <span
+class="math inline">\(W_d\)</span>（分别为 120, 120, 125 天）。</p>
+<h4 id="目标函数">3.2.1 目标函数</h4>
+<p>以系统全生命年化总成本最小为优化目标： <span class="math display">\[
+\min \text{TAC} = \sum_{i \in \text{Devices}} C_{\text{inv}, i} \cdot
+\text{CRF}(r, L_i) \cdot \text{Capacity}_i + \sum_{d \in D} W_d \cdot
+F_{\text{OP}, d}^*
+\]</span> 其中贴现率 <span class="math inline">\(r =
+8\%\)</span>，设备寿命 <span class="math inline">\(L_i\)</span>（风光 20
+年，电解槽/储氢/热泵 15 年，电池 10 年，燃料电池 10 年）。资本回收系数
+<span class="math inline">\(\text{CRF} = \frac{r(1+r)^{L_i}}{(1+r)^{L_i}
+- 1}\)</span>。</p>
+<h4 id="物理边界耦合约束">3.2.2 物理边界耦合约束</h4>
+<p>容量决策变量作为运行层各个时步出力或存储状态的上限。例如，在任何典型日
+<span class="math inline">\(d \in D\)</span> 与时步 <span
+class="math inline">\(t \in T\)</span> 下： - 风光功率上限：<span
+class="math inline">\(P_{\text{w\_use}, d, t} + P_{\text{curt\_w}, d, t}
+== C_{\text{w\_cap}} \cdot \text{cf}_{\text{w}, d, t}\)</span> -
+电池充放电功率：<span class="math inline">\(P_{\text{ch}, d, t} \le
+P_{\text{bat\_power\_cap}}, \quad P_{\text{dis}, d, t} \le
+P_{\text{bat\_power\_cap}}\)</span> - 电池电量范围：<span
+class="math inline">\(S_{\text{bat}, d, t} \le
+S_{\text{bat\_energy\_cap}}\)</span> - 电解槽与热泵功率限制：<span
+class="math inline">\(P_{\text{el}, d, t} \le P_{\text{el\_cap}}, \quad
+P_{\text{hp}, d, t} \le P_{\text{hp\_cap}}\)</span> -
+储氢罐质量限制：<span class="math inline">\(S_{\text{h2}, d, t} \le
+S_{\text{h2\_storage\_cap}}\)</span></p>
+<hr />
+<h3 id="投资参数敏感性与多目标-pareto-帕累托前沿分析方法">3.3
+投资参数敏感性与多目标 Pareto 帕累托前沿分析方法</h3>
+<h4 id="投资参数敏感性分析">3.3.1 投资参数敏感性分析</h4>
+<p>在年化容量规划模型基础上，分别调整风电、光伏、电池、电解槽、储氢、燃料电池和热泵单位容量投资造价系数
+<span class="math inline">\(C_{\text{inv},
+i}\)</span>。针对每个设备，施加造价倍率 <span
+class="math inline">\(\lambda_i \in \{0.50, 0.75, 1.00, 1.25,
+1.50\}\)</span> 的单因素敏感性测试。</p>
+<h4 id="成本-排放-pareto-多目标分析">3.3.2 成本-排放 Pareto
+多目标分析</h4>
+<p>采用 <span
+class="math inline">\(\epsilon\)</span>-约束法，以年度总成本 <span
+class="math inline">\(\text{TAC}\)</span>
+最小为优化目标，加入年度总碳排放硬性上限： <span
+class="math display">\[\sum_{d \in D} W_d \left( \sum_{t=0}^{23}
+E_{\text{total}, d, t} \right) \le \epsilon\]</span> 将 <span
+class="math inline">\(\epsilon\)</span> 设置为确定性基准排放的
+100%、90%、80%、70%、60%、50%、40%，重新求解模型以绘制 Pareto 前沿。</p>
+<hr />
+<h3 id="不确定性建模与稳健规划方法">3.4 不确定性建模与稳健规划方法</h3>
+<h4 id="先规划后扰动的压力测试方式">3.4.1
+先规划后扰动的“压力测试”方式</h4>
+<p>固定确定性容量方案容量参数 <span
+class="math inline">\(\mathbf{Capacity}^*\)</span>，在 6
+个不确定性预测场景 <span class="math inline">\(s \in S\)</span>
+（NORMAL, PV_LOW, WIND_LOW, LOAD_HIGH, H2_HIGH, EXTREME）以及 3
+个典型日交叉下运行日前优化调度模型，求解运行成本、碳排放与外部补氢的波动。</p>
+<h4 id="场景概率加权两阶段随机容量规划模型">3.4.2
+场景概率加权两阶段随机容量规划模型</h4>
+<p>第一阶段确定容量配置，第二阶段在 <span class="math inline">\(3 \times
+6 = 18\)</span> 个“典型日 ×
+不确定性场景”中求解日前运行调度。设不确定性场景 <span
+class="math inline">\(s\)</span> 发生概率为 <span
+class="math inline">\(p_s\)</span>，目标函数为期望年总成本最小： <span
+class="math display">\[
+\min F_{\text{stoch}} = \sum_{i} C_{\text{inv}, i} \cdot \text{CRF}_i
+\cdot \text{Capacity}_i + \sum_{d \in D} W_d \sum_{s \in S} p_s \cdot
+F_{\text{OP}, d, s}
+\]</span> 其中设定 NORMAL 的 <span class="math inline">\(p_s =
+60\%\)</span>，其余 5 类偏离场景各占 <span class="math inline">\(p_s =
+8\%\)</span>。</p>
+<h4 id="最坏情形-minimax-鲁棒容量规划模型">3.4.3 最坏情形 minimax
+鲁棒容量规划模型</h4>
+<p>为了防范最极端的气象与负荷偏离，不考虑概率分布，直接将每类场景 <span
+class="math inline">\(s \in S\)</span> 按照 365
+天年化折算。目标函数为最小化最坏场景年度总成本 <span
+class="math inline">\(\beta\)</span>： <span class="math display">\[
+\begin{aligned}
+\min \quad &amp; \beta \\
+\text{s.t.} \quad &amp; \beta \ge \sum_{i} C_{\text{inv}, i} \cdot
+\text{CRF}_i \cdot \text{Capacity}_i + 365 \cdot F_{\text{OP}, d,
+s}^{\text{annualized}}, \quad \forall s \in S \\
+&amp; \text{运行约束}(d, s), \quad \forall d \in D, \forall s \in S
+\end{aligned}
+\]</span> 这代表了 minimax
+优化策略，通过在投资阶段配置足够的备用和多余容量，将最坏情况下的年化成本上限降到最低。</p>
+<hr />
+<h2 id="研究结果与量化分析">4. 研究结果与量化分析</h2>
+<h3 id="日前优化调度基础场景-s0-s5-量化结果与分析">4.1
+日前优化调度基础场景 S0-S5 量化结果与分析</h3>
+<p>日前调度中各个渐进阶段基础场景的优化结果对比详见表 1。</p>
+<p align="center">
+<b>表 1：日前协同调度 S0-S5 场景量化指标对比</b>
+</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+<col style="width: 9%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: center;">场景代码</th>
+<th style="text-align: left;">场景释义</th>
+<th style="text-align: right;">总运行成本/元</th>
+<th style="text-align: right;">网电购入/kWh</th>
+<th style="text-align: right;">弃风弃光/kWh</th>
+<th style="text-align: right;">新能源消纳率</th>
+<th style="text-align: right;">天然气/m³</th>
+<th style="text-align: right;">锅炉供热/kWh</th>
+<th style="text-align: right;">热泵供热/kWh</th>
+<th style="text-align: right;">碳排放/kgCO₂</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><strong>S0</strong></td>
+<td style="text-align: left;">网电 + 燃气锅炉供能</td>
+<td style="text-align: right;">139,202.71</td>
+<td style="text-align: right;">167,000.00</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.00%</td>
+<td style="text-align: right;">16,015.97</td>
+<td style="text-align: right;">144,400.00</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">142,793.80</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>S1</strong></td>
+<td style="text-align: left;">引入 10MW风电 / 8MW光伏</td>
+<td style="text-align: right;">65,001.07</td>
+<td style="text-align: right;">22,860.00</td>
+<td style="text-align: right;">10,520.00</td>
+<td style="text-align: right;">93.20%</td>
+<td style="text-align: right;">16,015.97</td>
+<td style="text-align: right;">144,400.00</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">49,405.49</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>S2</strong></td>
+<td style="text-align: left;">新能源 + 5MW/10MWh 电池</td>
+<td style="text-align: right;">56,978.57</td>
+<td style="text-align: right;">15,843.16</td>
+<td style="text-align: right;">2,176.51</td>
+<td style="text-align: right;">98.59%</td>
+<td style="text-align: right;">16,015.97</td>
+<td style="text-align: right;">144,400.00</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">44,859.28</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>S3</strong></td>
+<td style="text-align: left;">电池 + 2MW电解槽 + 1t储氢</td>
+<td style="text-align: right;">63,519.11</td>
+<td style="text-align: right;">39,399.45</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">100.00%</td>
+<td style="text-align: right;">16,015.97</td>
+<td style="text-align: right;">144,400.00</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">60,121.40</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>S4</strong></td>
+<td style="text-align: left;">引入热泵 + 1MW燃料电池</td>
+<td style="text-align: right;">39,804.70</td>
+<td style="text-align: right;">88,005.96</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">100.00%</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">144,400.00</td>
+<td style="text-align: right;">57,019.06</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>S5</strong></td>
+<td style="text-align: left;">完整系统 + 碳价机制 (62.4元/t)</td>
+<td style="text-align: right;">43,362.69</td>
+<td style="text-align: right;">88,005.96</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">100.00%</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">144,400.00</td>
+<td style="text-align: right;">57,019.06</td>
+</tr>
+</tbody>
+</table>
+<p><strong>结果探讨：</strong> 1.
+<strong>新能源的清洁降本效能</strong>：S0
+场景中完全依靠外部电网与锅炉，运行成本达 13.92 万元。S1
+场景风光并网后，日前购电量下降 86.3%，碳排放骤降
+65.4%，但风光出力存在强间歇性，导致了 10,520.00 kWh 的弃风弃光。 2.
+<strong>电池储能与电氢转化的消纳闭环</strong>：S2 阶段 10 MWh
+电池的接入，使得弃风光电量降低了 79.3%。S3 阶段氢能系统的加入实现了
+100.00% 的消纳；然而，由于制氢对电力的二次消耗，使日前购电量上升至
+39,399.45 kWh，排放量小幅反弹至 60,121.40 kgCO₂。 3.
+<strong>空气源热泵的电气化替代能力</strong>：S4
+热泵完全淘汰燃气锅炉供热后，系统天然气消耗瞬间降至 0。日前总运行成本降至
+39,804.70 元，较传统的燃气锅炉供热（S3）成本骤降
+37.3%。这表明在鄂尔多斯典型电/气价下，热泵在降本和深度脱碳方面具有极强的边际替代优势。</p>
+<hr />
+<h3 id="确定性容量规划最优装机配置">4.2 确定性容量规划最优装机配置</h3>
+<p>在考虑资本回收系数（贴现率
+8%）后，多典型日年化容量规划模型的求解状态为
+<code>optimal</code>。最优容量配置及年化各项指标如表 2 所示。</p>
+<p align="center">
+<b>表 2：确定性容量规划最优装机配置及年度指标</b>
+</p>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">规划设备</th>
+<th style="text-align: right;">最优装机容量</th>
+<th style="text-align: left;">单位</th>
+<th style="text-align: left;">年化费用与运营指标</th>
+<th style="text-align: right;">优化计算值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>风电装机</strong></td>
+<td style="text-align: right;">21,905.65</td>
+<td style="text-align: left;">kW</td>
+<td style="text-align: left;"><strong>年运行成本</strong> (OPEX)</td>
+<td style="text-align: right;">149.73 万元/年</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>光伏装机</strong></td>
+<td style="text-align: right;">5,804.71</td>
+<td style="text-align: left;">kW</td>
+<td style="text-align: left;"><strong>年化投资成本</strong> (CAPEX)</td>
+<td style="text-align: right;">1,698.03 万元/年</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>电池功率</strong></td>
+<td style="text-align: right;">508.25</td>
+<td style="text-align: left;">kW</td>
+<td style="text-align: left;"><strong>年化总成本</strong> (TAC)</td>
+<td style="text-align: right;">1,847.76 万元/年</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>电池容量</strong></td>
+<td style="text-align: right;">923.48</td>
+<td style="text-align: left;">kWh</td>
+<td style="text-align: left;"><strong>年网购电量</strong></td>
+<td style="text-align: right;">225.18 万 kWh/年</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>电解槽功率</strong></td>
+<td style="text-align: right;">2,903.95</td>
+<td style="text-align: left;">kW</td>
+<td style="text-align: left;"><strong>年度总碳排放</strong></td>
+<td style="text-align: right;">146.67 万 kgCO₂/年</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>储氢罐容量</strong></td>
+<td style="text-align: right;">406.12</td>
+<td style="text-align: left;">kg</td>
+<td style="text-align: left;"><strong>新能源消纳率</strong></td>
+<td style="text-align: right;">97.72%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>燃料电池</strong></td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: left;">kW</td>
+<td style="text-align: left;"><strong>年外售氢气</strong></td>
+<td style="text-align: right;">0.00 kg/年</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>热泵最大功率</strong></td>
+<td style="text-align: right;">3,150.00</td>
+<td style="text-align: left;">kW</td>
+<td style="text-align: left;"><strong>外部补氢量</strong></td>
+<td style="text-align: right;">0.00 kg/年</td>
+</tr>
+</tbody>
+</table>
+<p><strong>结果深入分析：</strong> 1.
+<strong>“风强光弱”的电源配置格局</strong>：模型配置了约 21.9 MW
+风电，而光伏仅为 5.8
+MW。这是由于园区电热负荷在冬季夜间达到峰值，而鄂尔多斯风能资源与该负荷特性呈现强正相关，使得风电能够更具性价比地替代网网购电。
+2.
+<strong>储能规划的“日前-年化”经济反差</strong>：日前调度中，电池（S2场景
+10MWh）能极佳地平抑弃风光。然而，一旦考虑其年化单位投资成本（CRF
+计折旧），电池的经济性容量迅速缩窄为 923.48
+kWh。这说明在当前的峰谷价差下，短时电池储能的静态投资回收期偏长，系统倾向于直接依靠源侧出力而非通过电池吞吐。
+3. <strong>燃料电池常规经济性的判定</strong>：燃料电池容量被规划为
+0。该结果源于电-氢-电循环（制氢效率 75% <span
+class="math inline">\(\times\)</span> 燃料电池发电效率 60% = 45%
+综合循环效率）带来的巨大热力学能量折损，使其在常规套利和日前电力电价结构中完全不具备配置价值。</p>
+<hr />
+<h3 id="投资造价波动敏感性规律与-pareto-前沿">4.4
+投资造价波动敏感性规律与 Pareto 前沿</h3>
+<h4 id="设备投资造价敏感性">4.4.1 设备投资造价敏感性</h4>
+<p>在 35 个造价扰动场景中，系统 TAC
+对不同设备投资的变化敏感度呈现高度不均： *
+<strong>风电投资最敏感</strong>：风电单位造价减半（WIND_050），年总成本大幅降低
+37.4% 至 1,156.82 万元。 *
+<strong>光伏投资敏感性局限</strong>：光伏造价减半（PV_050），TAC 降至
+1,736.14 万元，且在光伏极端廉价时，诱发了燃料电池出现 44.04 kW
+的局部示范性装机。 *
+<strong>燃料电池造价下降的无效性</strong>：单独降低燃料电池单位造价至
+50%（FUEL_FC_050），其最优装机容量依然保持为
+0，说明其系统出路需要通过辅助服务、黑启动、以及停电风险防范等备用价值来评估。</p>
+<h4 id="成本-排放多目标-pareto-前沿">4.4.2 成本-排放多目标 Pareto
+前沿</h4>
+<p>通过限制年度碳排放上限 <span class="math inline">\(\epsilon\)</span>
+得到的 Pareto 折中路径见表 3。</p>
+<p align="center">
+<b>表 3：不同碳排放限制下的容量规划 Pareto 前沿轨迹</b>
+</p>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: center;">场景名称</th>
+<th style="text-align: right;">碳排放限额比例</th>
+<th style="text-align: right;">年总成本 (TAC)/元</th>
+<th style="text-align: right;">年总成本增幅</th>
+<th style="text-align: right;">年度碳排放/kgCO₂</th>
+<th style="text-align: right;">新能源消纳率</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><strong>CARBON_CAP_100</strong></td>
+<td style="text-align: right;">基准 (100%)</td>
+<td style="text-align: right;">18,477,584.08</td>
+<td style="text-align: right;">0.00%</td>
+<td style="text-align: right;">1,466,714.34</td>
+<td style="text-align: right;">97.72%</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>CARBON_CAP_090</strong></td>
+<td style="text-align: right;">90%</td>
+<td style="text-align: right;">18,503,760.96</td>
+<td style="text-align: right;">0.14%</td>
+<td style="text-align: right;">1,320,042.91</td>
+<td style="text-align: right;">97.34%</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>CARBON_CAP_080</strong></td>
+<td style="text-align: right;">80%</td>
+<td style="text-align: right;">18,546,381.37</td>
+<td style="text-align: right;">0.37%</td>
+<td style="text-align: right;">1,173,371.47</td>
+<td style="text-align: right;">97.12%</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>CARBON_CAP_070</strong></td>
+<td style="text-align: right;">70%</td>
+<td style="text-align: right;">18,595,619.68</td>
+<td style="text-align: right;">0.64%</td>
+<td style="text-align: right;">1,026,700.04</td>
+<td style="text-align: right;">96.74%</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>CARBON_CAP_060</strong></td>
+<td style="text-align: right;">60%</td>
+<td style="text-align: right;">18,653,160.92</td>
+<td style="text-align: right;">0.95%</td>
+<td style="text-align: right;">880,028.61</td>
+<td style="text-align: right;">96.28%</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>CARBON_CAP_050</strong></td>
+<td style="text-align: right;">50%</td>
+<td style="text-align: right;">18,710,702.15</td>
+<td style="text-align: right;">1.26%</td>
+<td style="text-align: right;">733,357.17</td>
+<td style="text-align: right;">95.83%</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>CARBON_CAP_040</strong></td>
+<td style="text-align: right;">40%</td>
+<td style="text-align: right;">18,768,301.40</td>
+<td style="text-align: right;"><strong>1.57%</strong></td>
+<td style="text-align: right;">586,685.74</td>
+<td style="text-align: right;"><strong>95.38%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>随着减排要求从基准（CARBON_CAP_100）收紧至强制减排
+60%（CARBON_CAP_040），系统 TAC 仅微幅上涨了 1.57%（增幅 29.07
+万元/年）。这表明系统内部存在着极好的清洁电能与氢能替代空间，但在极度收紧阶段，新能源消纳率从
+97.72% 下降至
+95.38%，这是系统为了用新能源覆盖最低出力时段、从而主动超配了新能源装机所导致的弃风弃光现象。</p>
+<hr />
+<h3 id="确定性方案压力测试脆弱性诊断">4.5
+确定性方案压力测试（脆弱性诊断）</h3>
+<p>固定确定性最优容量 <span
+class="math inline">\(\mathbf{Capacity}^*\)</span>
+并在各扰动下日前调度的折算结果如表 4 所示。</p>
+<p align="center">
+<b>表 4：固定容量下的年化日前调度压力测试</b>
+</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 17%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 13%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: center;">测试工况</th>
+<th style="text-align: left;">扰动定义</th>
+<th style="text-align: right;">年运行总费用/元</th>
+<th style="text-align: right;">运行成本增幅</th>
+<th style="text-align: right;">年总排放量/kgCO₂</th>
+<th style="text-align: right;">排放增幅</th>
+<th style="text-align: right;">外部高成本补氢/kg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><strong>NORMAL</strong></td>
+<td style="text-align: left;">无预测偏差</td>
+<td style="text-align: right;">18,477,584.08</td>
+<td style="text-align: right;">0.00%</td>
+<td style="text-align: right;">1,466,714.34</td>
+<td style="text-align: right;">0.00%</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>PV_LOW</strong></td>
+<td style="text-align: left;">光伏出力降低 30%</td>
+<td style="text-align: right;">19,557,730.88</td>
+<td style="text-align: right;">5.85%</td>
+<td style="text-align: right;">3,486,187.93</td>
+<td style="text-align: right;">137.69%</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>WIND_LOW</strong></td>
+<td style="text-align: left;">风电出力降低 30%</td>
+<td style="text-align: right;">28,121,446.41</td>
+<td style="text-align: right;"><strong>52.19%</strong></td>
+<td style="text-align: right;">13,534,701.23</td>
+<td style="text-align: right;"><strong>822.79%</strong></td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>LOAD_HIGH</strong></td>
+<td style="text-align: left;">园区电热负荷升高 15%</td>
+<td style="text-align: right;">21,379,606.98</td>
+<td style="text-align: right;">15.71%</td>
+<td style="text-align: right;">5,638,918.40</td>
+<td style="text-align: right;">284.46%</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>H2_HIGH</strong></td>
+<td style="text-align: left;">氢负荷升高 30%</td>
+<td style="text-align: right;">20,130,105.17</td>
+<td style="text-align: right;">8.94%</td>
+<td style="text-align: right;">3,718,135.43</td>
+<td style="text-align: right;">153.50%</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>EXTREME</strong></td>
+<td style="text-align: left;">极端多维恶劣组合</td>
+<td style="text-align: right;">38,478,098.50</td>
+<td style="text-align: right;"><strong>108.24%</strong></td>
+<td style="text-align: right;">24,910,570.19</td>
+<td style="text-align: right;"><strong>1598.39%</strong></td>
+<td style="text-align: right;">0.00</td>
+</tr>
+</tbody>
+</table>
+<p><strong>脆弱性原因诊断：</strong>
+压力测试揭示，确定性规划方案在面对<strong>风电出力偏低（WIND_LOW）</strong>及<strong>极端恶劣工况（EXTREME）</strong>时暴露出了极强的脆弱性：系统不得不连续数十小时依靠外部高碳电网购电，导致年运行费用骤增
+52.19% 和 108.24%，碳排放则直接暴涨 822.79% 及
+1598.39%。这科学证明了：在强环境与气象资源随机性下，确定性最优方案在物理和财务层面均面临高度的安全风险。</p>
+<hr />
+<h3 id="确定性随机与最坏情形鲁棒容量配置对比">4.6
+确定性、随机与最坏情形鲁棒容量配置对比</h3>
+<p>为平抑不确定性风险，概率加权随机规划和 minimax
+鲁棒优化在容量决策阶段所做出的物理配置重组见表 5。</p>
+<p align="center">
+<b>表 5：确定性、随机及鲁棒容量配置方案量化比对</b>
+</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 17%" />
+<col style="width: 21%" />
+<col style="width: 21%" />
+<col style="width: 21%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">配置设备及年化经济指标</th>
+<th style="text-align: center;">确定性容量规划</th>
+<th style="text-align: center;">场景概率加权随机规划</th>
+<th style="text-align: center;">最坏情形鲁棒容量规划</th>
+<th style="text-align: left;">稳健度提升的经济学与物理调控机制说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>风电额定装机</strong> (kW)</td>
+<td style="text-align: center;">21,905.65</td>
+<td style="text-align: center;">22,927.26</td>
+<td style="text-align: center;"><strong>30,000.00</strong>
+<em>(上限)</em></td>
+<td
+style="text-align: left;">鲁棒规划大幅扩张风电以抵御低风速时期的日前购电风险</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>光伏额定装机</strong> (kW)</td>
+<td style="text-align: center;">5,804.71</td>
+<td style="text-align: center;">6,479.27</td>
+<td style="text-align: center;"><strong>10,099.55</strong></td>
+<td
+style="text-align: left;">风光容量大比例配置，利用风光日夜/季节互补性</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>电池储能容量</strong> (kWh)</td>
+<td style="text-align: center;">923.48</td>
+<td style="text-align: center;">521.29</td>
+<td style="text-align: center;"><strong>245.49</strong></td>
+<td
+style="text-align: left;">储能容量单调骤缩，系统发现源侧超配比增储防险更经济</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>电解水装置功率</strong> (kW)</td>
+<td style="text-align: center;">2,903.95</td>
+<td style="text-align: center;">3,430.34</td>
+<td style="text-align: center;"><strong>3,818.29</strong></td>
+<td
+style="text-align: left;">扩大制氢能力，在新能源丰沛时段加速转化并存储绿氢</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>储氢罐储气容量</strong> (kg)</td>
+<td style="text-align: center;">406.12</td>
+<td style="text-align: center;">407.87</td>
+<td style="text-align: center;"><strong>373.90</strong></td>
+<td
+style="text-align: left;">容量平稳微缩，制氢功率是供氢瓶颈而非储氢体积</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>燃料电池额定功率</strong>
+(kW)</td>
+<td style="text-align: center;">0.00</td>
+<td style="text-align: center;">0.00</td>
+<td style="text-align: center;"><strong>0.00</strong></td>
+<td
+style="text-align: left;">效率瓶颈下，燃料电池始终未获得常规充放套利定位</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>热泵最大电功率</strong> (kW)</td>
+<td style="text-align: center;">3,150.00</td>
+<td style="text-align: center;">3,217.50</td>
+<td style="text-align: center;"><strong>3,363.75</strong></td>
+<td style="text-align: left;">热泵容量小幅上调，协同电热柔性交互</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>年化投资 CAPEX</strong>
+(万元/年)</td>
+<td style="text-align: center;">1,698.03</td>
+<td style="text-align: center;">1,792.97</td>
+<td style="text-align: center;"><strong>2,352.41</strong></td>
+<td style="text-align: left;">鲁棒方案以前期 CAPEX 增加 38.5%
+的代价防范运行风险</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>目标函数 TAC 口径</strong></td>
+<td style="text-align: center;">1,847.76 万元 <em>(基准值)</em></td>
+<td style="text-align: center;">2,150.83 万元 <em>(期望总成本)</em></td>
+<td style="text-align: center;"><strong>2,787.76 万元</strong>
+<em>(最坏场景成本上限)</em></td>
+<td
+style="text-align: left;">决策目标从期望经济性转向对最坏工况的鲁棒控制</td>
+</tr>
+</tbody>
+</table>
+<p><strong>规划模式决策机理比对：</strong> 1.
+<strong>场景概率加权随机规划</strong>：基于期望损失最小，适度扩容风光与电解槽，为平均预测偏差做准备，TAC
+期望值为 2,150.83 万元。 2.
+<strong>最坏情形鲁棒容量规划</strong>：通过辅助变量 <span
+class="math inline">\(\beta\)</span> 约束，将目标锁定在最坏扰动场景的
+TAC 最小。为达成此目标，鲁棒方案将风电容量直接推升至 30.00 MW
+的模型设置上限，光伏容量提升 74.0% 至 10.1 MW，电解槽提升 31.5% 至 3.8
+MW。这种配置成功将最坏情形下的年度总费用控制在 2,787.76
+万元的稳定上界内。 3.
+<strong>“以源代储”的不确定性防范逻辑</strong>：随机规划与鲁棒容量规划中，<strong>电池储能容量发生了极其显著的单调下降</strong>（923
+kWh <span class="math inline">\(\rightarrow\)</span> 521 kWh <span
+class="math inline">\(\rightarrow\)</span> 245
+kWh）。这一物理反差证明：在抵御长期、大范围气象扰动时，电化学储能由于能量吞吐上限与高额折旧限制，并不是最优抗灾手段；系统在规划层面更倾向于“<strong>源侧容量超配（增大风光）+
+电氢耦合装置扩容（提高制氢效率）</strong>”以增强消纳与日前自平衡的鲁棒性。</p>
+<hr />
+<h2 id="讨论与工程应用评价">5. 讨论与工程应用评价</h2>
+<h3 id="关键设备在多能流网络中的系统定位">5.1
+关键设备在多能流网络中的系统定位</h3>
+<ul>
+<li><strong>空气源热泵（低碳基石）</strong>：热泵完全承接热负荷供热后，系统天然气消耗降至
+0。在当前能源结构下，电气化供热是园区脱碳的最有效、最稳定路径，在所有的
+Pareto 前沿及鲁棒方案中热泵均接近容量规划的极值。</li>
+<li><strong>电解槽与储氢罐（柔性纽带）</strong>：电解槽既用于消耗低谷新能源，又通过储氢跨时步移动来抗风险。储氢罐受日前调度内循环及初末一致性约束，最优容量在各场景下变化不大（保持在
+370-410 kg
+之间），制氢功率（电解槽规模）才是制约供氢自给率的物理瓶颈。</li>
+<li><strong>燃料电池（紧急保供与低碳备用）</strong>：虽然燃料电池常规配置容量为
+0，但当日前调度碳排放上限收紧至极点（CAP4，排放硬性收紧
+60%）时，系统选择启动燃料电池发电，以规避高网电排放。这表明燃料电池不应当作为日前经济套利设备，而应当作为紧急备用、备用保供或可靠性保底资产，并辅以备用补偿金或停电减损收益进行精确建模。</li>
+</ul>
+<h3 id="决策矩阵的选用与风险管理">5.2 决策矩阵的选用与风险管理</h3>
+<p>基于本研究构建的三级容量规划决策体系，工程设计人员可根据项目风险偏好进行方案选型：
+1. <strong>确定性规划</strong>：预算敏感、天气及负荷预测误差小于 5%
+的高度平稳工业微网系统。 2.
+<strong>随机规划</strong>：有统计概率特征（如历史气象数据库支持）、寻求全寿命期期望总财务支出最低的商业运行园区。
+3.
+<strong>鲁棒规划</strong>：军事基地、高精尖芯片制造园区或具有保供硬性指标、财务能承受前期投资冗余但对日前断电或运行费用失控零容忍的重大示范项目。</p>
+<hr />
+<h2 id="研究结论">6. 研究结论</h2>
+<p>本研究针对零碳园区电-热-氢-储综合能源系统的日前控制与长周期规划，构建了“日前调度-容量规划-投资敏感性-Pareto前沿-随机/鲁棒优化”的级联混合整数线性规划优化体系，得出以下量化结论：</p>
+<ol type="1">
+<li><strong>热泵替代的极高性价比</strong>：日前调度表明，空气源热泵以高
+COP 完全替代传统燃气锅炉供热是系统最核心的降碳引擎，使天然气直接消耗降为
+0，且相比电网-锅炉日前运行总费用降低 71.4%。</li>
+<li><strong>容量规划的源侧主导与储能收缩</strong>：多典型日年化容量规划中，系统倾向于风电（21.9
+MW）与光伏（5.8 MW）的电源配置。受年化投资折旧成本限制，电池容量从日前的
+10 MWh 缩窄至 923.48 kWh。燃料电池在常规经济下容量为 0。</li>
+<li><strong>Pareto
+弹性降碳表现</strong>：多目标分析显示，当年度碳排放上限收紧 60%
+时，年总成本仅微幅上升 1.57%（增加 29.07
+万元/年），说明系统存在极佳的低成本减排优化空间。</li>
+<li><strong>气候不确定性暴露及鲁棒物理防御</strong>：压力测试显示，确定性配置在低风速下面临年成本暴涨
+52.19% 与排放上升 822.79% 的严重暴露度。鲁棒规划通过“<strong>前期 CAPEX
+增加 38.5%（风电装机升至上限 30 MW，光伏大增至 10.1 MW）+
+转化装置扩容（电解槽增至 3.8 MW）+ 电池储能容量骤缩至 245
+kWh</strong>”的以源代储重组策略，成功将最坏情形下的 TAC 稳定控制在
+2787.76 万元的确定性上界内。</li>
+</ol>
+<p>本报告所得数学体系与量化演变趋势可直接作为园区微网规划可行性分析以及
+EMS 优化调度策略的逻辑设计支撑。</p>
+<script>
+window.addEventListener('load', () => {
+  const el = document.getElementById('目标函数objective-function');
+  if (el) el.scrollIntoView();
+});
+</script></body>
+</html>
+

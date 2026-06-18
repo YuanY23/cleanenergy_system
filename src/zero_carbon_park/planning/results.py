@@ -61,9 +61,12 @@ def _extract_hourly_results(model) -> pd.DataFrame:
                     "heat_load_kw": value(model.heat_load[d, t]),
                     "hydrogen_load_kg": value(model.hydrogen_load[d, t]),
                     "grid_buy_kw": value(model.grid_buy[d, t]),
+                    "grid_sell_kw": value(model.grid_sell[d, t]),
                     "pv_used_kw": value(model.pv_used[d, t]),
+                    "pv_sold_kw": value(model.pv_sold[d, t]),
                     "pv_curtail_kw": value(model.pv_curtail[d, t]),
                     "wind_used_kw": value(model.wind_used[d, t]),
+                    "wind_sold_kw": value(model.wind_sold[d, t]),
                     "wind_curtail_kw": value(model.wind_curtail[d, t]),
                     "heat_pump_power_kw": value(model.heat_pump_power[d, t]),
                     "heat_pump_heat_kw": value(model.heat_pump_heat[d, t]),
@@ -94,10 +97,13 @@ def _extract_typical_day_operation(model, hourly: pd.DataFrame) -> pd.DataFrame:
         renewable_available = (
             day["pv_used_kw"].sum()
             + day["wind_used_kw"].sum()
+            + day["pv_sold_kw"].sum()
+            + day["wind_sold_kw"].sum()
             + day["pv_curtail_kw"].sum()
             + day["wind_curtail_kw"].sum()
         )
         renewable_used = day["pv_used_kw"].sum() + day["wind_used_kw"].sum()
+        renewable_sold = day["pv_sold_kw"].sum() + day["wind_sold_kw"].sum()
         total_cost = _daily_operation_cost(model, d)
         carbon_emission = day["carbon_emission_kg"].sum()
         rows.append(
@@ -106,8 +112,10 @@ def _extract_typical_day_operation(model, hourly: pd.DataFrame) -> pd.DataFrame:
                 "weight_days": weight_days,
                 "total_cost_cny": total_cost,
                 "grid_purchase_kwh": day["grid_buy_kw"].sum(),
+                "grid_sell_kwh": day["grid_sell_kw"].sum(),
                 "renewable_available_kwh": renewable_available,
                 "renewable_used_kwh": renewable_used,
+                "renewable_sold_kwh": renewable_sold,
                 "renewable_curtailment_kwh": (
                     day["pv_curtail_kw"].sum() + day["wind_curtail_kw"].sum()
                 ),
@@ -122,6 +130,7 @@ def _extract_typical_day_operation(model, hourly: pd.DataFrame) -> pd.DataFrame:
                 "fuel_cell_generation_kwh": day["fuel_cell_power_kw"].sum(),
                 "weighted_total_cost_cny": total_cost * weight_days,
                 "weighted_grid_purchase_kwh": day["grid_buy_kw"].sum() * weight_days,
+                "weighted_grid_sell_kwh": day["grid_sell_kw"].sum() * weight_days,
                 "weighted_carbon_emission_kg": carbon_emission * weight_days,
                 "weighted_heat_pump_heat_kwh": day["heat_pump_heat_kw"].sum()
                 * weight_days,
@@ -135,7 +144,14 @@ def _extract_typical_day_operation(model, hourly: pd.DataFrame) -> pd.DataFrame:
 def _extract_planning_summary(model, status: str, typical_day_operation: pd.DataFrame) -> pd.DataFrame:
     annual_operation_cost = value(model.annual_operation_cost)
     annualized_investment_cost = value(model.annualized_investment_cost)
-    annual_total_cost = annual_operation_cost + annualized_investment_cost
+    annual_demand_charge_cost = value(model.annual_demand_charge_cost)
+    annual_fuel_cell_backup_value = value(model.annual_fuel_cell_backup_value)
+    annual_total_cost = (
+        annual_operation_cost
+        + annualized_investment_cost
+        + annual_demand_charge_cost
+        - annual_fuel_cell_backup_value
+    )
     annual_renewable_available = (
         typical_day_operation["renewable_available_kwh"]
         * typical_day_operation["weight_days"]
@@ -150,8 +166,13 @@ def _extract_planning_summary(model, status: str, typical_day_operation: pd.Data
                 "status": status,
                 "annual_operation_cost_cny": annual_operation_cost,
                 "annualized_investment_cost_cny": annualized_investment_cost,
+                "annual_demand_charge_cost_cny": annual_demand_charge_cost,
+                "annual_fuel_cell_backup_value_cny": annual_fuel_cell_backup_value,
                 "annual_total_cost_cny": annual_total_cost,
                 "annual_grid_cost_cny": _annual_component_cost(model, "grid"),
+                "annual_grid_sell_revenue_cny": _annual_component_cost(
+                    model, "grid_sell"
+                ),
                 "annual_gas_cost_cny": _annual_component_cost(model, "gas"),
                 "annual_carbon_cost_cny": _annual_component_cost(model, "carbon"),
                 "annual_grid_purchase_kwh": typical_day_operation[
@@ -171,6 +192,13 @@ def _extract_planning_summary(model, status: str, typical_day_operation: pd.Data
                     typical_day_operation["h2_external_supply_kg"]
                     * typical_day_operation["weight_days"]
                 ).sum(),
+                "annual_grid_sell_kwh": typical_day_operation[
+                    "weighted_grid_sell_kwh"
+                ].sum(),
+                "grid_import_peak_kw": value(model.grid_import_peak_kw),
+                "fuel_cell_backup_capacity_kw": value(
+                    model.fuel_cell_backup_capacity_kw
+                ),
             }
         ]
     )
@@ -186,9 +214,12 @@ def _daily_operation_cost(model, d) -> float:
             + model.carbon_emission[d, t] * model.carbon_price[d, t]
             + (model.battery_charge[d, t] + model.battery_discharge[d, t])
             * model.battery_om
+            + (model.battery_charge[d, t] + model.battery_discharge[d, t])
+            * model.battery_degradation_cost_cny_per_kwh
             + model.h2_production[d, t] * model.electrolyzer_om
             + model.h2_external_supply[d, t] * model.h2_external_supply_cost
             + model.fuel_cell_power[d, t] * model.fuel_cell_om
+            - model.grid_sell[d, t] * model.grid_sell_price[d, t]
         )
         for t in model.T
     )
@@ -200,6 +231,12 @@ def _annual_component_cost(model, component: str) -> float:
         for t in model.T:
             if component == "grid":
                 total += value(model.weight_days[d] * model.grid_buy[d, t] * model.grid_price[d, t])
+            elif component == "grid_sell":
+                total += value(
+                    model.weight_days[d]
+                    * model.grid_sell[d, t]
+                    * model.grid_sell_price[d, t]
+                )
             elif component == "gas":
                 total += value(
                     model.weight_days[d]
@@ -213,4 +250,3 @@ def _annual_component_cost(model, component: str) -> float:
                     * model.carbon_price[d, t]
                 )
     return total
-

@@ -22,9 +22,13 @@ def add_operation_variables(model: ConcreteModel) -> None:
     """添加多典型日逐小时运行变量。"""
 
     model.grid_buy = Var(model.D, model.T, domain=NonNegativeReals)
+    model.grid_sell = Var(model.D, model.T, domain=NonNegativeReals)
+    model.grid_import_peak_kw = Var(domain=NonNegativeReals)
     model.pv_used = Var(model.D, model.T, domain=NonNegativeReals)
+    model.pv_sold = Var(model.D, model.T, domain=NonNegativeReals)
     model.pv_curtail = Var(model.D, model.T, domain=NonNegativeReals)
     model.wind_used = Var(model.D, model.T, domain=NonNegativeReals)
+    model.wind_sold = Var(model.D, model.T, domain=NonNegativeReals)
     model.wind_curtail = Var(model.D, model.T, domain=NonNegativeReals)
 
     model.heat_pump_power = Var(model.D, model.T, domain=NonNegativeReals)
@@ -44,6 +48,6 @@ def add_operation_variables(model: ConcreteModel) -> None:
     model.h2_external_supply = Var(model.D, model.T, domain=NonNegativeReals)
     model.h2_fuel_cell = Var(model.D, model.T, domain=NonNegativeReals)
     model.fuel_cell_power = Var(model.D, model.T, domain=NonNegativeReals)
+    model.fuel_cell_backup_capacity_kw = Var(domain=NonNegativeReals)
 
     model.carbon_emission = Var(model.D, model.T, domain=NonNegativeReals)
-

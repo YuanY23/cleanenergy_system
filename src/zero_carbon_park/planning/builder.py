@@ -37,7 +37,7 @@ def build_capacity_planning_model(
     model.D = Set(initialize=day_ids, ordered=True)
     model.T = RangeSet(0, last_hour)
 
-    _add_timeseries_params(model, typical_days)
+    _add_timeseries_params(model, typical_days, device, economic)
     _add_device_params(model, device)
     _add_economic_params(model, economic)
     _add_investment_params(model, cost_params)
@@ -57,7 +57,12 @@ def build_capacity_planning_model(
     return model
 
 
-def _add_timeseries_params(model: ConcreteModel, typical_days) -> None:
+def _add_timeseries_params(
+    model: ConcreteModel,
+    typical_days,
+    device: dict[str, float],
+    economic: dict[str, float],
+) -> None:
     """写入多典型日时间序列参数。"""
 
     by_day = {config.day_id: (config, workbook.timeseries.reset_index(drop=True)) for config, workbook in typical_days}
@@ -93,22 +98,49 @@ def _add_timeseries_params(model: ConcreteModel, typical_days) -> None:
         },
     )
 
+    for column, param_name, default in [
+        ("heat_pump_cop", "heat_pump_cop", device["heat_pump_COP"]),
+        (
+            "electrolyzer_kwh_per_kg",
+            "electrolyzer_kwh_per_kg",
+            device["electrolyzer_kWh_per_kgH2"],
+        ),
+        (
+            "fuel_cell_kwh_per_kg",
+            "fuel_cell_kwh_per_kg",
+            device["fuel_cell_KWh_per_kgH2"]
+            if "fuel_cell_KWh_per_kgH2" in device
+            else device["fuel_cell_kWh_per_kgH2"],
+        ),
+        (
+            "grid_sell_price_cny_per_kwh",
+            "grid_sell_price",
+            economic.get("grid_sell_price_cny_per_kwh", 0.0),
+        ),
+    ]:
+        setattr(
+            model,
+            param_name,
+            Param(
+                model.D,
+                model.T,
+                initialize={
+                    (d, t): _timeseries_value(by_day[d][1], t, column, default)
+                    for d in model.D
+                    for t in model.T
+                },
+            ),
+        )
+
 
 def _add_device_params(model: ConcreteModel, device: dict[str, float]) -> None:
     """写入设备效率和固定容量参数。"""
 
-    model.heat_pump_cop = Param(initialize=float(device["heat_pump_COP"]))
     model.gas_boiler_heat_max = Param(initialize=float(device["gas_boiler_heat_kW"]))
     model.gas_boiler_eff = Param(initialize=float(device["gas_boiler_eff"]))
     model.gas_lhv = Param(initialize=float(device["gas_lhv_kwh_per_m3"]))
     model.battery_eta_ch = Param(initialize=float(device["battery_eta_ch"]))
     model.battery_eta_dis = Param(initialize=float(device["battery_eta_dis"]))
-    model.electrolyzer_kwh_per_kg = Param(
-        initialize=float(device["electrolyzer_kWh_per_kgH2"])
-    )
-    model.fuel_cell_kwh_per_kg = Param(
-        initialize=float(device["fuel_cell_kWh_per_kgH2"])
-    )
 
 
 def _add_economic_params(model: ConcreteModel, economic: dict[str, float]) -> None:
@@ -162,3 +194,25 @@ def _add_investment_params(
         initialize=cost_params.heat_pump_capex_cny_per_kw
         * capital_recovery_factor(rate, cost_params.heat_pump_life_years)
     )
+    model.battery_degradation_cost_cny_per_kwh = Param(
+        initialize=cost_params.battery_degradation_cost_cny_per_kwh
+    )
+    model.fuel_cell_backup_value_cny_per_kw_year = Param(
+        initialize=cost_params.fuel_cell_backup_value_cny_per_kw_year
+    )
+    model.fuel_cell_backup_reserve_kw = Param(
+        initialize=cost_params.fuel_cell_backup_reserve_kw
+    )
+    model.fuel_cell_backup_required_kw = Param(
+        initialize=cost_params.fuel_cell_backup_required_kw
+    )
+    model.grid_export_limit_kw = Param(initialize=cost_params.grid_export_limit_kw)
+    model.demand_charge_cny_per_kw_year = Param(
+        initialize=cost_params.demand_charge_cny_per_kw_year
+    )
+
+
+def _timeseries_value(frame, row_index: int, column: str, default: float) -> float:
+    if column in frame.columns:
+        return float(frame.loc[row_index, column])
+    return float(default)

@@ -9,13 +9,17 @@ def add_planning_constraints(model: ConcreteModel) -> None:
     """添加容量规划和运行调度耦合约束。"""
 
     def pv_available_rule(m, d, t):
-        return m.pv_used[d, t] + m.pv_curtail[d, t] == m.pv_capacity_kw * m.pv_cf[d, t]
+        return (
+            m.pv_used[d, t] + m.pv_sold[d, t] + m.pv_curtail[d, t]
+            == m.pv_capacity_kw * m.pv_cf[d, t]
+        )
 
     model.pv_available_constraint = Constraint(model.D, model.T, rule=pv_available_rule)
 
     def wind_available_rule(m, d, t):
         return (
             m.wind_used[d, t] + m.wind_curtail[d, t]
+            + m.wind_sold[d, t]
             == m.wind_capacity_kw * m.wind_cf[d, t]
         )
 
@@ -36,6 +40,27 @@ def add_planning_constraints(model: ConcreteModel) -> None:
 
     model.power_balance_constraint = Constraint(model.D, model.T, rule=power_balance_rule)
 
+    def grid_sell_definition_rule(m, d, t):
+        return m.grid_sell[d, t] == m.pv_sold[d, t] + m.wind_sold[d, t]
+
+    model.grid_sell_definition_constraint = Constraint(
+        model.D, model.T, rule=grid_sell_definition_rule
+    )
+
+    def grid_export_limit_rule(m, d, t):
+        return m.grid_sell[d, t] <= m.grid_export_limit_kw
+
+    model.grid_export_limit_constraint = Constraint(
+        model.D, model.T, rule=grid_export_limit_rule
+    )
+
+    def grid_import_peak_rule(m, d, t):
+        return m.grid_buy[d, t] <= m.grid_import_peak_kw
+
+    model.grid_import_peak_constraint = Constraint(
+        model.D, model.T, rule=grid_import_peak_rule
+    )
+
     def heat_pump_capacity_rule(m, d, t):
         return m.heat_pump_power[d, t] <= m.heat_pump_power_capacity_kw
 
@@ -44,7 +69,7 @@ def add_planning_constraints(model: ConcreteModel) -> None:
     )
 
     def heat_pump_conversion_rule(m, d, t):
-        return m.heat_pump_heat[d, t] == m.heat_pump_power[d, t] * m.heat_pump_cop
+        return m.heat_pump_heat[d, t] == m.heat_pump_power[d, t] * m.heat_pump_cop[d, t]
 
     model.heat_pump_conversion_constraint = Constraint(
         model.D, model.T, rule=heat_pump_conversion_rule
@@ -123,7 +148,7 @@ def add_planning_constraints(model: ConcreteModel) -> None:
     def hydrogen_production_rule(m, d, t):
         return (
             m.h2_production[d, t]
-            == m.electrolyzer_power[d, t] / m.electrolyzer_kwh_per_kg
+            == m.electrolyzer_power[d, t] / m.electrolyzer_kwh_per_kg[d, t]
         )
 
     model.hydrogen_production_constraint = Constraint(
@@ -162,7 +187,10 @@ def add_planning_constraints(model: ConcreteModel) -> None:
     )
 
     def fuel_cell_conversion_rule(m, d, t):
-        return m.fuel_cell_power[d, t] == m.h2_fuel_cell[d, t] * m.fuel_cell_kwh_per_kg
+        return (
+            m.fuel_cell_power[d, t]
+            == m.h2_fuel_cell[d, t] * m.fuel_cell_kwh_per_kg[d, t]
+        )
 
     model.fuel_cell_conversion_constraint = Constraint(
         model.D, model.T, rule=fuel_cell_conversion_rule
@@ -178,6 +206,27 @@ def add_planning_constraints(model: ConcreteModel) -> None:
 
     model.hydrogen_balance_constraint = Constraint(
         model.D, model.T, rule=hydrogen_balance_rule
+    )
+
+    def fuel_cell_backup_capacity_rule(m):
+        return m.fuel_cell_backup_capacity_kw <= m.fuel_cell_power_capacity_kw
+
+    model.fuel_cell_backup_capacity_constraint = Constraint(
+        rule=fuel_cell_backup_capacity_rule
+    )
+
+    def fuel_cell_backup_reserve_limit_rule(m):
+        return m.fuel_cell_backup_capacity_kw <= m.fuel_cell_backup_reserve_kw
+
+    model.fuel_cell_backup_reserve_limit_constraint = Constraint(
+        rule=fuel_cell_backup_reserve_limit_rule
+    )
+
+    def fuel_cell_backup_required_rule(m):
+        return m.fuel_cell_power_capacity_kw >= m.fuel_cell_backup_required_kw
+
+    model.fuel_cell_backup_required_constraint = Constraint(
+        rule=fuel_cell_backup_required_rule
     )
 
     def carbon_emission_rule(m, d, t):

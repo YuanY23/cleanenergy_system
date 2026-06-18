@@ -17,9 +17,12 @@ def add_capacity_planning_objective(model: ConcreteModel) -> None:
                 + (m.pv_curtail[d, t] + m.wind_curtail[d, t]) * m.curtail_penalty
                 + m.carbon_emission[d, t] * m.carbon_price[d, t]
                 + (m.battery_charge[d, t] + m.battery_discharge[d, t]) * m.battery_om
+                + (m.battery_charge[d, t] + m.battery_discharge[d, t])
+                * m.battery_degradation_cost_cny_per_kwh
                 + m.h2_production[d, t] * m.electrolyzer_om
                 + m.h2_external_supply[d, t] * m.h2_external_supply_cost
                 + m.fuel_cell_power[d, t] * m.fuel_cell_om
+                - m.grid_sell[d, t] * m.grid_sell_price[d, t]
                 for t in m.T
             )
             for d in m.D
@@ -42,8 +45,20 @@ def add_capacity_planning_objective(model: ConcreteModel) -> None:
     model.annualized_investment_cost = Expression(
         rule=annualized_investment_cost_rule
     )
+
+    model.annual_demand_charge_cost = Expression(
+        expr=model.grid_import_peak_kw * model.demand_charge_cny_per_kw_year
+    )
+    model.annual_fuel_cell_backup_value = Expression(
+        expr=model.fuel_cell_backup_capacity_kw
+        * model.fuel_cell_backup_value_cny_per_kw_year
+    )
     model.annual_total_cost = Objective(
-        expr=model.annual_operation_cost + model.annualized_investment_cost,
+        expr=(
+            model.annual_operation_cost
+            + model.annualized_investment_cost
+            + model.annual_demand_charge_cost
+            - model.annual_fuel_cell_backup_value
+        ),
         sense=minimize,
     )
-

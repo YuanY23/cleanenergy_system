@@ -25,6 +25,12 @@ class PlanningCostParams:
     fuel_cell_life_years: int = 10
     heat_pump_capex_cny_per_kw: float = 1000.0
     heat_pump_life_years: int = 15
+    battery_degradation_cost_cny_per_kwh: float = 0.0
+    fuel_cell_backup_value_cny_per_kw_year: float = 0.0
+    fuel_cell_backup_reserve_kw: float = 0.0
+    fuel_cell_backup_required_kw: float = 0.0
+    grid_export_limit_kw: float = 0.0
+    demand_charge_cny_per_kw_year: float = 0.0
 
 
 def capital_recovery_factor(rate: float, years: int) -> float:
@@ -41,4 +47,3 @@ def get_default_planning_cost_params() -> PlanningCostParams:
     """返回第一版容量规划默认投资参数。"""
 
     return PlanningCostParams()
-

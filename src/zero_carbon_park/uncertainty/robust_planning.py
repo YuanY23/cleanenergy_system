@@ -22,6 +22,7 @@ from zero_carbon_park.typical_days.generator import generate_typical_day_workboo
 from zero_carbon_park.uncertainty.definitions import (
     UncertaintyCase,
     get_default_uncertainty_cases,
+    select_uncertainty_cases,
 )
 from zero_carbon_park.uncertainty.generator import generate_uncertainty_workbook
 
@@ -65,11 +66,15 @@ def build_robust_typical_days(
 def run_robust_capacity_planning(
     workbook_path: str | Path,
     output_root: str | Path = "outputs",
+    uncertainty_case_ids: list[str] | None = None,
 ) -> dict[str, Path]:
     """运行最坏情形鲁棒容量规划。"""
 
     workbook = load_input_workbook(workbook_path)
-    robust_days = build_robust_typical_days(workbook)
+    robust_days = build_robust_typical_days(
+        workbook,
+        select_uncertainty_cases(uncertainty_case_ids),
+    )
     model = build_capacity_planning_model(
         robust_days,
         get_default_planning_cost_params(),
@@ -123,9 +128,15 @@ def _add_worst_case_objective(model, robust_days) -> None:
             + (m.pv_curtail[d, t] + m.wind_curtail[d, t]) * m.curtail_penalty
             + m.carbon_emission[d, t] * m.carbon_price[d, t]
             + (m.battery_charge[d, t] + m.battery_discharge[d, t]) * m.battery_om
+            + sum(
+                m.battery_degradation_throughput_segment[d, t, segment]
+                * m.battery_degradation_segment_cost[segment]
+                for segment in m.BATTERY_DEGRADATION_SEGMENTS
+            )
             + m.h2_production[d, t] * m.electrolyzer_om
             + m.h2_external_supply[d, t] * m.h2_external_supply_cost
             + m.fuel_cell_power[d, t] * m.fuel_cell_om
+            - m.grid_sell[d, t] * m.grid_sell_price[d, t]
             for t in m.T
         )
 
@@ -209,7 +220,8 @@ def _build_robust_summary(
     case_results: pd.DataFrame,
 ) -> pd.DataFrame:
     worst = case_results.sort_values("annual_total_cost_cny", ascending=False).iloc[0]
-    normal = case_results[case_results["uncertainty_case_id"] == "NORMAL"].iloc[0]
+    normal_cases = case_results[case_results["uncertainty_case_id"] == "NORMAL"]
+    reference = normal_cases.iloc[0] if not normal_cases.empty else worst
     return pd.DataFrame(
         [
             {
@@ -224,7 +236,10 @@ def _build_robust_summary(
                 "annualized_investment_cost_cny": float(
                     value(model.annualized_investment_cost)
                 ),
-                "normal_case_total_cost_cny": float(normal["annual_total_cost_cny"]),
+                "reference_case_id": reference["uncertainty_case_id"],
+                "reference_case_total_cost_cny": float(
+                    reference["annual_total_cost_cny"]
+                ),
                 "worst_case_carbon_emission_kg": float(
                     worst["annual_carbon_emission_kg"]
                 ),
@@ -345,7 +360,9 @@ def _export_conclusion(
     cap = capacity.set_index("capacity_variable")["capacity_value"]
     cases = case_results.sort_values("annual_total_cost_cny", ascending=False)
     worst = cases.iloc[0]
-    normal = case_results[case_results["uncertainty_case_id"] == "NORMAL"].iloc[0]
+    reference = case_results[
+        case_results["uncertainty_case_id"] == row["reference_case_id"]
+    ].iloc[0]
 
     text = f"""# 最坏情形鲁棒容量规划结论
 
@@ -358,7 +375,8 @@ def _export_conclusion(
 - 求解状态：{row['status']}
 - 最坏场景：{row['worst_case_id']}
 - 最坏场景年度总成本：{row['worst_case_total_cost_cny']:.2f} 元
-- 正常场景年度总成本：{row['normal_case_total_cost_cny']:.2f} 元
+- 参照场景：{row['reference_case_id']}
+- 参照场景年度总成本：{row['reference_case_total_cost_cny']:.2f} 元
 - 年化投资成本：{row['annualized_investment_cost_cny']:.2f} 元
 - 最坏场景年度碳排放：{row['worst_case_carbon_emission_kg']:.2f} kgCO2
 - 最坏场景新能源消纳率：{row['worst_case_renewable_consumption_rate']:.2%}
@@ -377,7 +395,7 @@ def _export_conclusion(
 
 ## 4. 说明
 
-最坏情形为 {worst['uncertainty_case_id']}，年度总成本高于正常场景 {worst['annual_total_cost_cny'] - normal['annual_total_cost_cny']:.2f} 元。该结果反映了鲁棒规划的核心作用：牺牲部分正常场景经济性，换取极端或不利场景下更可控的年度成本上界。
+最坏情形为 {worst['uncertainty_case_id']}，年度总成本高于参照场景 {worst['annual_total_cost_cny'] - reference['annual_total_cost_cny']:.2f} 元。该结果反映了鲁棒规划的核心作用：牺牲部分常规场景经济性，换取极端或不利场景下更可控的年度成本上界。
 """
     output_path.write_text(text, encoding="utf-8")
     return output_path

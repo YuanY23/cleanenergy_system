@@ -1,0 +1,9 @@
+﻿capacity_variable,capacity_name,unit,capacity_value
+wind_capacity_kw,风电装机,kW,23953.13343837999
+pv_capacity_kw,光伏装机,kW,5410.114882551391
+battery_power_capacity_kw,电池功率,kW,-0.0
+battery_energy_capacity_kwh,电池容量,kWh,-0.0
+electrolyzer_power_capacity_kw,电解槽功率,kW,3450.592414634272
+h2_storage_capacity_kg,储氢容量,kg,423.4738720193487
+fuel_cell_power_capacity_kw,燃料电池功率,kW,0.0
+heat_pump_power_capacity_kw,热泵功率,kW,3060.0

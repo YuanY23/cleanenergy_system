@@ -10,7 +10,7 @@ import pandas as pd
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from zero_carbon_park.data.loader import load_input_workbook
+from zero_carbon_park.data.loader import InputWorkbook, load_input_workbook
 from zero_carbon_park.optimization.solver import solve_model
 from zero_carbon_park.planning.builder import build_capacity_planning_model
 from zero_carbon_park.planning.cost_params import get_default_planning_cost_params
@@ -40,10 +40,13 @@ def run_uncertainty_stress_test(
     workbook_path: str | Path,
     output_root: str | Path = "outputs",
     uncertainty_case_ids: list[str] | None = None,
+    enforce_green_power_share: bool = True,
 ) -> dict[str, Path]:
     """固定容量规划结果，运行不确定性压力测试。"""
 
     workbook = load_input_workbook(workbook_path)
+    if not enforce_green_power_share:
+        workbook = _with_green_power_share(workbook, 0.0)
     cost_params = get_default_planning_cost_params()
     typical_configs = get_default_typical_days()
 
@@ -102,6 +105,35 @@ def run_uncertainty_stress_test(
     paths.update(_export_plots(summary, output_dir))
     paths["conclusion_md"] = _export_conclusion(summary, output_dir / "conclusion.md")
     return paths
+
+
+def _with_green_power_share(workbook: InputWorkbook, value: float) -> InputWorkbook:
+    economic = workbook.economic_params.copy(deep=True)
+    mask = economic["parameter"] == "green_power_min_share"
+    if mask.any():
+        economic.loc[mask, "value"] = value
+    else:
+        economic = pd.concat(
+            [
+                economic,
+                pd.DataFrame(
+                    [
+                        {
+                            "category": "政策约束",
+                            "parameter": "green_power_min_share",
+                            "value": value,
+                        }
+                    ]
+                ),
+            ],
+            ignore_index=True,
+        )
+    return InputWorkbook(
+        timeseries=workbook.timeseries,
+        device_params=workbook.device_params,
+        economic_params=economic,
+        scenarios=workbook.scenarios,
+    )
 
 
 def _select_cases(case_ids: list[str] | None) -> list[UncertaintyCase]:
@@ -251,4 +283,3 @@ def _export_conclusion(summary: pd.DataFrame, output_path: Path) -> Path:
 def _configure_font() -> None:
     plt.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "Arial Unicode MS"]
     plt.rcParams["axes.unicode_minus"] = False
-

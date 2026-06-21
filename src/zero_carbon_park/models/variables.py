@@ -31,6 +31,12 @@ def add_decision_variables(model: ConcreteModel) -> None:
 
     # 氢能变量：电解槽、储氢罐、氢负荷释放和燃料电池。
     model.electrolyzer_power = Var(model.T, domain=NonNegativeReals)
+    model.electrolyzer_power_segment = Var(
+        model.T, model.ELECTROLYZER_SEGMENTS, domain=NonNegativeReals
+    )
+    model.h2_production_segment = Var(
+        model.T, model.ELECTROLYZER_SEGMENTS, domain=NonNegativeReals
+    )
     model.h2_production = Var(model.T, domain=NonNegativeReals)
     model.h2_charge = Var(model.T, domain=NonNegativeReals)
     model.h2_discharge = Var(model.T, domain=NonNegativeReals)
@@ -41,8 +47,18 @@ def add_decision_variables(model: ConcreteModel) -> None:
     # 售氢量用于 v1.4 售氢收益场景；未启用售氢时价格为 0。
     model.h2_sale = Var(model.T, domain=NonNegativeReals)
     model.h2_fuel_cell = Var(model.T, domain=NonNegativeReals)
+    model.h2_fuel_cell_segment = Var(
+        model.T, model.FUEL_CELL_SEGMENTS, domain=NonNegativeReals
+    )
+    model.fuel_cell_power_segment = Var(
+        model.T, model.FUEL_CELL_SEGMENTS, domain=NonNegativeReals
+    )
     model.fuel_cell_power = Var(model.T, domain=NonNegativeReals)
     model.is_fuel_cell_on = Var(model.T, domain=Binary)
+
+    model.battery_degradation_throughput_segment = Var(
+        model.T, model.BATTERY_DEGRADATION_SEGMENTS, domain=NonNegativeReals
+    )
 
     # 碳排放变量，单位 kgCO2。
     model.carbon_emission = Var(model.T, domain=NonNegativeReals)

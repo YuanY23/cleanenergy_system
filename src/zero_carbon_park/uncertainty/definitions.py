@@ -68,3 +68,16 @@ def get_default_uncertainty_cases() -> list[UncertaintyCase]:
         ),
     ]
 
+
+def select_uncertainty_cases(case_ids: list[str] | None) -> list[UncertaintyCase]:
+    """Return default uncertainty cases, optionally filtered by case id."""
+
+    cases = get_default_uncertainty_cases()
+    if case_ids is None:
+        return cases
+
+    by_id = {case.case_id: case for case in cases}
+    missing = [case_id for case_id in case_ids if case_id not in by_id]
+    if missing:
+        raise ValueError(f"未知不确定性场景：{missing}")
+    return [by_id[case_id] for case_id in case_ids]

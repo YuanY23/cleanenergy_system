@@ -1,0 +1,8 @@
+﻿name,status,output_dir,file_count,error
+input_conversion,ok,E:\clean_engry_system\new_source_results\00_inputs,2,
+01_full_pipeline,ok,E:\clean_engry_system\new_source_results\01_full_pipeline,13,
+02_capacity_planning,ok,E:\clean_engry_system\new_source_results\02_capacity_planning,11,
+03_pareto_cost_carbon,ok,E:\clean_engry_system\new_source_results\03_pareto_cost_carbon,9,
+04_uncertainty_stress_test,ok,E:\clean_engry_system\new_source_results\04_uncertainty_stress_test,8,
+05_stochastic_planning,ok,E:\clean_engry_system\new_source_results\05_stochastic_planning,10,
+06_robust_planning,ok,E:\clean_engry_system\new_source_results\06_robust_planning,11,

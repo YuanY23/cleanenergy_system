@@ -17,8 +17,11 @@ def add_capacity_planning_objective(model: ConcreteModel) -> None:
                 + (m.pv_curtail[d, t] + m.wind_curtail[d, t]) * m.curtail_penalty
                 + m.carbon_emission[d, t] * m.carbon_price[d, t]
                 + (m.battery_charge[d, t] + m.battery_discharge[d, t]) * m.battery_om
-                + (m.battery_charge[d, t] + m.battery_discharge[d, t])
-                * m.battery_degradation_cost_cny_per_kwh
+                + sum(
+                    m.battery_degradation_throughput_segment[d, t, segment]
+                    * m.battery_degradation_segment_cost[segment]
+                    for segment in m.BATTERY_DEGRADATION_SEGMENTS
+                )
                 + m.h2_production[d, t] * m.electrolyzer_om
                 + m.h2_external_supply[d, t] * m.h2_external_supply_cost
                 + m.fuel_cell_power[d, t] * m.fuel_cell_om

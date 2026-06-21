@@ -5,6 +5,10 @@ from __future__ import annotations
 from pyomo.environ import ConcreteModel, Constraint
 
 
+def _upper_bound(variable, fallback: float) -> float:
+    return float(variable.ub) if variable.ub is not None else fallback
+
+
 def add_planning_constraints(model: ConcreteModel) -> None:
     """添加容量规划和运行调度耦合约束。"""
 
@@ -40,6 +44,27 @@ def add_planning_constraints(model: ConcreteModel) -> None:
 
     model.power_balance_constraint = Constraint(model.D, model.T, rule=power_balance_rule)
 
+    def green_power_share_rule(m):
+        renewable_used = sum(
+            m.weight_days[d] * (m.pv_used[d, t] + m.wind_used[d, t])
+            for d in m.D
+            for t in m.T
+        )
+        electricity_demand = sum(
+            m.weight_days[d]
+            * (
+                m.electric_load[d, t]
+                + m.heat_pump_power[d, t]
+                + m.battery_charge[d, t]
+                + m.electrolyzer_power[d, t]
+            )
+            for d in m.D
+            for t in m.T
+        )
+        return renewable_used >= m.green_power_min_share * electricity_demand
+
+    model.green_power_share_constraint = Constraint(rule=green_power_share_rule)
+
     def grid_sell_definition_rule(m, d, t):
         return m.grid_sell[d, t] == m.pv_sold[d, t] + m.wind_sold[d, t]
 
@@ -62,7 +87,10 @@ def add_planning_constraints(model: ConcreteModel) -> None:
     )
 
     def heat_pump_capacity_rule(m, d, t):
-        return m.heat_pump_power[d, t] <= m.heat_pump_power_capacity_kw
+        return (
+            m.heat_pump_power[d, t]
+            <= m.heat_pump_power_capacity_kw * m.heat_pump_available_ratio[d, t]
+        )
 
     model.heat_pump_capacity_constraint = Constraint(
         model.D, model.T, rule=heat_pump_capacity_rule
@@ -138,6 +166,33 @@ def add_planning_constraints(model: ConcreteModel) -> None:
 
     model.battery_terminal_constraint = Constraint(model.D, rule=battery_terminal_rule)
 
+    def battery_degradation_throughput_rule(m, d, t):
+        return (
+            sum(
+                m.battery_degradation_throughput_segment[d, t, segment]
+                for segment in m.BATTERY_DEGRADATION_SEGMENTS
+            )
+            == m.battery_charge[d, t] + m.battery_discharge[d, t]
+        )
+
+    model.battery_degradation_throughput_constraint = Constraint(
+        model.D, model.T, rule=battery_degradation_throughput_rule
+    )
+
+    def battery_degradation_segment_limit_rule(m, d, t, segment):
+        return (
+            m.battery_degradation_throughput_segment[d, t, segment]
+            <= m.battery_degradation_segment_width_rate[segment]
+            * m.battery_energy_capacity_kwh
+        )
+
+    model.battery_degradation_segment_limit_constraint = Constraint(
+        model.D,
+        model.T,
+        model.BATTERY_DEGRADATION_SEGMENTS,
+        rule=battery_degradation_segment_limit_rule,
+    )
+
     def electrolyzer_capacity_rule(m, d, t):
         return m.electrolyzer_power[d, t] <= m.electrolyzer_power_capacity_kw
 
@@ -145,10 +200,77 @@ def add_planning_constraints(model: ConcreteModel) -> None:
         model.D, model.T, rule=electrolyzer_capacity_rule
     )
 
+    def electrolyzer_on_capacity_rule(m, d, t):
+        return (
+            m.electrolyzer_power[d, t]
+            <= _upper_bound(m.electrolyzer_power_capacity_kw, 1.0e7)
+            * m.is_electrolyzer_on[d, t]
+        )
+
+    model.electrolyzer_on_capacity_constraint = Constraint(
+        model.D, model.T, rule=electrolyzer_on_capacity_rule
+    )
+
+    def electrolyzer_min_load_rule(m, d, t):
+        return (
+            m.electrolyzer_power[d, t]
+            >= m.electrolyzer_min_load_rate * m.electrolyzer_power_capacity_kw
+            - _upper_bound(m.electrolyzer_power_capacity_kw, 1.0e7)
+            * (1 - m.is_electrolyzer_on[d, t])
+        )
+
+    model.electrolyzer_min_load_constraint = Constraint(
+        model.D, model.T, rule=electrolyzer_min_load_rule
+    )
+
+    def electrolyzer_power_segment_sum_rule(m, d, t):
+        return (
+            m.electrolyzer_power[d, t]
+            == sum(
+                m.electrolyzer_power_segment[d, t, segment]
+                for segment in m.ELECTROLYZER_SEGMENTS
+            )
+        )
+
+    model.electrolyzer_power_segment_sum_constraint = Constraint(
+        model.D, model.T, rule=electrolyzer_power_segment_sum_rule
+    )
+
+    def electrolyzer_power_segment_limit_rule(m, d, t, segment):
+        return (
+            m.electrolyzer_power_segment[d, t, segment]
+            <= m.electrolyzer_segment_power_fraction[segment]
+            * m.electrolyzer_power_capacity_kw
+        )
+
+    model.electrolyzer_power_segment_limit_constraint = Constraint(
+        model.D,
+        model.T,
+        model.ELECTROLYZER_SEGMENTS,
+        rule=electrolyzer_power_segment_limit_rule,
+    )
+
+    def electrolyzer_production_segment_rule(m, d, t, segment):
+        return (
+            m.h2_production_segment[d, t, segment]
+            == m.electrolyzer_power_segment[d, t, segment]
+            / m.electrolyzer_segment_kwh_per_kg[segment]
+        )
+
+    model.electrolyzer_production_segment_constraint = Constraint(
+        model.D,
+        model.T,
+        model.ELECTROLYZER_SEGMENTS,
+        rule=electrolyzer_production_segment_rule,
+    )
+
     def hydrogen_production_rule(m, d, t):
         return (
             m.h2_production[d, t]
-            == m.electrolyzer_power[d, t] / m.electrolyzer_kwh_per_kg[d, t]
+            == sum(
+                m.h2_production_segment[d, t, segment]
+                for segment in m.ELECTROLYZER_SEGMENTS
+            )
         )
 
     model.hydrogen_production_constraint = Constraint(
@@ -161,7 +283,12 @@ def add_planning_constraints(model: ConcreteModel) -> None:
             if t == m.T.first()
             else m.h2_storage[d, t - 1]
         )
-        return m.h2_storage[d, t] == previous_storage + m.h2_charge[d, t] - m.h2_discharge[d, t]
+        return (
+            m.h2_storage[d, t]
+            == previous_storage * (1 - m.h2_storage_loss_rate_per_hour)
+            + m.h2_charge[d, t]
+            - m.h2_discharge[d, t]
+        )
 
     model.h2_storage_constraint = Constraint(model.D, model.T, rule=h2_storage_rule)
 
@@ -186,10 +313,77 @@ def add_planning_constraints(model: ConcreteModel) -> None:
         model.D, model.T, rule=fuel_cell_capacity_rule
     )
 
-    def fuel_cell_conversion_rule(m, d, t):
+    def fuel_cell_on_capacity_rule(m, d, t):
         return (
             m.fuel_cell_power[d, t]
-            == m.h2_fuel_cell[d, t] * m.fuel_cell_kwh_per_kg[d, t]
+            <= _upper_bound(m.fuel_cell_power_capacity_kw, 1.0e7)
+            * m.is_fuel_cell_on[d, t]
+        )
+
+    model.fuel_cell_on_capacity_constraint = Constraint(
+        model.D, model.T, rule=fuel_cell_on_capacity_rule
+    )
+
+    def fuel_cell_min_load_rule(m, d, t):
+        return (
+            m.fuel_cell_power[d, t]
+            >= m.fuel_cell_min_load_rate * m.fuel_cell_power_capacity_kw
+            - _upper_bound(m.fuel_cell_power_capacity_kw, 1.0e7)
+            * (1 - m.is_fuel_cell_on[d, t])
+        )
+
+    model.fuel_cell_min_load_constraint = Constraint(
+        model.D, model.T, rule=fuel_cell_min_load_rule
+    )
+
+    def fuel_cell_power_segment_sum_rule(m, d, t):
+        return (
+            m.fuel_cell_power[d, t]
+            == sum(
+                m.fuel_cell_power_segment[d, t, segment]
+                for segment in m.FUEL_CELL_SEGMENTS
+            )
+        )
+
+    model.fuel_cell_power_segment_sum_constraint = Constraint(
+        model.D, model.T, rule=fuel_cell_power_segment_sum_rule
+    )
+
+    def fuel_cell_power_segment_limit_rule(m, d, t, segment):
+        return (
+            m.fuel_cell_power_segment[d, t, segment]
+            <= m.fuel_cell_segment_power_fraction[segment]
+            * m.fuel_cell_power_capacity_kw
+        )
+
+    model.fuel_cell_power_segment_limit_constraint = Constraint(
+        model.D,
+        model.T,
+        model.FUEL_CELL_SEGMENTS,
+        rule=fuel_cell_power_segment_limit_rule,
+    )
+
+    def fuel_cell_conversion_segment_rule(m, d, t, segment):
+        return (
+            m.fuel_cell_power_segment[d, t, segment]
+            == m.h2_fuel_cell_segment[d, t, segment]
+            * m.fuel_cell_segment_kwh_per_kg[segment]
+        )
+
+    model.fuel_cell_conversion_segment_constraint = Constraint(
+        model.D,
+        model.T,
+        model.FUEL_CELL_SEGMENTS,
+        rule=fuel_cell_conversion_segment_rule,
+    )
+
+    def fuel_cell_conversion_rule(m, d, t):
+        return (
+            m.h2_fuel_cell[d, t]
+            == sum(
+                m.h2_fuel_cell_segment[d, t, segment]
+                for segment in m.FUEL_CELL_SEGMENTS
+            )
         )
 
     model.fuel_cell_conversion_constraint = Constraint(

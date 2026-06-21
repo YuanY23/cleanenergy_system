@@ -16,6 +16,11 @@ def add_total_cost_objective(model: ConcreteModel) -> None:
             + (m.pv_curtail[t] + m.wind_curtail[t]) * m.curtail_penalty
             + m.carbon_emission[t] * m.carbon_price[t]
             + (m.battery_charge[t] + m.battery_discharge[t]) * m.battery_om
+            + sum(
+                m.battery_degradation_throughput_segment[t, segment]
+                * m.battery_degradation_segment_cost[segment]
+                for segment in m.BATTERY_DEGRADATION_SEGMENTS
+            )
             + m.h2_production[t] * m.electrolyzer_om
             + m.h2_external_supply[t] * m.h2_external_supply_cost
             + m.fuel_cell_power[t] * m.fuel_cell_om

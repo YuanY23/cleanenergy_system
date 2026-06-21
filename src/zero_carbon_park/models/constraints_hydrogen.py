@@ -16,9 +16,65 @@ def add_hydrogen_constraints(model: ConcreteModel) -> None:
         model.T, rule=electrolyzer_capacity_rule
     )
 
+    def electrolyzer_min_load_rule(m, t):
+        return (
+            m.electrolyzer_power[t]
+            >= m.is_electrolyzer_on[t]
+            * m.electrolyzer_power_max
+            * m.electrolyzer_min_load_rate
+        )
+
+    model.electrolyzer_min_load_constraint = Constraint(
+        model.T, rule=electrolyzer_min_load_rule
+    )
+
+    def electrolyzer_power_segment_sum_rule(m, t):
+        return (
+            m.electrolyzer_power[t]
+            == sum(
+                m.electrolyzer_power_segment[t, segment]
+                for segment in m.ELECTROLYZER_SEGMENTS
+            )
+        )
+
+    model.electrolyzer_power_segment_sum_constraint = Constraint(
+        model.T, rule=electrolyzer_power_segment_sum_rule
+    )
+
+    def electrolyzer_power_segment_limit_rule(m, t, segment):
+        return (
+            m.electrolyzer_power_segment[t, segment]
+            <= m.electrolyzer_power_max
+            * m.electrolyzer_segment_power_fraction[segment]
+        )
+
+    model.electrolyzer_power_segment_limit_constraint = Constraint(
+        model.T,
+        model.ELECTROLYZER_SEGMENTS,
+        rule=electrolyzer_power_segment_limit_rule,
+    )
+
+    def electrolyzer_production_segment_rule(m, t, segment):
+        return (
+            m.h2_production_segment[t, segment]
+            == m.electrolyzer_power_segment[t, segment]
+            / m.electrolyzer_segment_kwh_per_kg[segment]
+        )
+
+    model.electrolyzer_production_segment_constraint = Constraint(
+        model.T,
+        model.ELECTROLYZER_SEGMENTS,
+        rule=electrolyzer_production_segment_rule,
+    )
+
     def hydrogen_production_rule(m, t):
-        # 制氢量 = 电解槽耗电量 / 单位制氢耗电量。
-        return m.h2_production[t] == m.electrolyzer_power[t] / m.electrolyzer_kwh_per_kg
+        return (
+            m.h2_production[t]
+            == sum(
+                m.h2_production_segment[t, segment]
+                for segment in m.ELECTROLYZER_SEGMENTS
+            )
+        )
 
     model.hydrogen_production_constraint = Constraint(
         model.T, rule=hydrogen_production_rule
@@ -32,9 +88,64 @@ def add_hydrogen_constraints(model: ConcreteModel) -> None:
         model.T, rule=fuel_cell_capacity_rule
     )
 
+    def fuel_cell_min_load_rule(m, t):
+        return (
+            m.fuel_cell_power[t]
+            >= m.is_fuel_cell_on[t]
+            * m.fuel_cell_power_max
+            * m.fuel_cell_min_load_rate
+        )
+
+    model.fuel_cell_min_load_constraint = Constraint(
+        model.T, rule=fuel_cell_min_load_rule
+    )
+
+    def fuel_cell_power_segment_sum_rule(m, t):
+        return (
+            m.fuel_cell_power[t]
+            == sum(
+                m.fuel_cell_power_segment[t, segment]
+                for segment in m.FUEL_CELL_SEGMENTS
+            )
+        )
+
+    model.fuel_cell_power_segment_sum_constraint = Constraint(
+        model.T, rule=fuel_cell_power_segment_sum_rule
+    )
+
+    def fuel_cell_power_segment_limit_rule(m, t, segment):
+        return (
+            m.fuel_cell_power_segment[t, segment]
+            <= m.fuel_cell_power_max * m.fuel_cell_segment_power_fraction[segment]
+        )
+
+    model.fuel_cell_power_segment_limit_constraint = Constraint(
+        model.T,
+        model.FUEL_CELL_SEGMENTS,
+        rule=fuel_cell_power_segment_limit_rule,
+    )
+
+    def fuel_cell_conversion_segment_rule(m, t, segment):
+        return (
+            m.fuel_cell_power_segment[t, segment]
+            == m.h2_fuel_cell_segment[t, segment]
+            * m.fuel_cell_segment_kwh_per_kg[segment]
+        )
+
+    model.fuel_cell_conversion_segment_constraint = Constraint(
+        model.T,
+        model.FUEL_CELL_SEGMENTS,
+        rule=fuel_cell_conversion_segment_rule,
+    )
+
     def fuel_cell_conversion_rule(m, t):
-        # 燃料电池发电量 = 耗氢量 * 单位氢气发电量。
-        return m.fuel_cell_power[t] == m.h2_fuel_cell[t] * m.fuel_cell_kwh_per_kg
+        return (
+            m.h2_fuel_cell[t]
+            == sum(
+                m.h2_fuel_cell_segment[t, segment]
+                for segment in m.FUEL_CELL_SEGMENTS
+            )
+        )
 
     model.fuel_cell_conversion_constraint = Constraint(
         model.T, rule=fuel_cell_conversion_rule
@@ -52,7 +163,12 @@ def add_hydrogen_constraints(model: ConcreteModel) -> None:
     def h2_storage_rule(m, t):
         # 储氢量表示每个小时结束后的储氢库存。
         previous_storage = m.h2_storage_initial if t == 0 else m.h2_storage[t - 1]
-        return m.h2_storage[t] == previous_storage + m.h2_charge[t] - m.h2_discharge[t]
+        return (
+            m.h2_storage[t]
+            == previous_storage * (1 - m.h2_storage_loss_rate_per_hour)
+            + m.h2_charge[t]
+            - m.h2_discharge[t]
+        )
 
     model.h2_storage_constraint = Constraint(model.T, rule=h2_storage_rule)
 

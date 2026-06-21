@@ -1,0 +1,113 @@
+[
+  {
+    "name": "input",
+    "status": "ok",
+    "workbook": "E:\\clean_engry_system\\第一组数据汇总表.xlsx",
+    "output_root": "E:\\clean_engry_system\\results_v1",
+    "planning_cost_params": {
+      "discount_rate": 0.06,
+      "wind_capex_cny_per_kw": 7547.0,
+      "wind_life_years": 20,
+      "pv_capex_cny_per_kw": 5010.0,
+      "pv_life_years": 25,
+      "battery_power_capex_cny_per_kw": 800.0,
+      "battery_energy_capex_cny_per_kwh": 1000.0,
+      "battery_life_years": 12,
+      "electrolyzer_capex_cny_per_kw": 2200.0,
+      "electrolyzer_life_years": 15,
+      "h2_storage_capex_cny_per_kg": 3600.0,
+      "h2_storage_life_years": 20,
+      "fuel_cell_capex_cny_per_kw": 6000.0,
+      "fuel_cell_life_years": 10,
+      "heat_pump_capex_cny_per_kw": 3500.0,
+      "heat_pump_life_years": 15,
+      "battery_degradation_cost_cny_per_kwh": 0.1,
+      "fuel_cell_backup_value_cny_per_kw_year": 300.0,
+      "fuel_cell_backup_reserve_kw": 10000.0,
+      "fuel_cell_backup_required_kw": 0.0,
+      "grid_export_limit_kw": 50000.0,
+      "demand_charge_cny_per_kw_year": 393.6
+    },
+    "simplification_note": "Only uncertainty scenario count is reduced; model variables, constraints and objectives are unchanged."
+  },
+  {
+    "name": "01_full_pipeline",
+    "status": "ok",
+    "output_dir": "E:\\clean_engry_system\\results_v1\\01_full_pipeline"
+  },
+  {
+    "name": "02_typical_days",
+    "status": "ok",
+    "output_dir": "E:\\clean_engry_system\\results_v1\\02_typical_days"
+  },
+  {
+    "name": "03_annualization",
+    "status": "ok",
+    "output_dir": "E:\\clean_engry_system\\results_v1\\03_annualization"
+  },
+  {
+    "name": "04_capacity_planning",
+    "status": "ok",
+    "output_dir": "E:\\clean_engry_system\\results_v1\\04_capacity_planning"
+  },
+  {
+    "name": "05_investment_sensitivity",
+    "status": "ok",
+    "output_dir": "E:\\clean_engry_system\\results_v1\\05_investment_sensitivity"
+  },
+  {
+    "name": "06_pareto_cost_carbon",
+    "status": "ok",
+    "output_dir": "E:\\clean_engry_system\\results_v1\\06_pareto_cost_carbon"
+  },
+  {
+    "name": "07_uncertainty_stress_test",
+    "status": "ok",
+    "output_dir": "E:\\clean_engry_system\\results_v1\\07_uncertainty_stress_test"
+  },
+  {
+    "name": "08_stochastic_planning",
+    "status": "ok",
+    "output_dir": "E:\\clean_engry_system\\results_v1\\08_stochastic_planning",
+    "case_ids": [
+      "NORMAL",
+      "LOAD_HIGH",
+      "EXTREME"
+    ],
+    "file_count": 10,
+    "files": [
+      "E:\\clean_engry_system\\results_v1\\08_stochastic_planning\\results\\v4_stochastic_planning\\stochastic_summary.csv",
+      "E:\\clean_engry_system\\results_v1\\08_stochastic_planning\\results\\v4_stochastic_planning\\stochastic_summary.xlsx",
+      "E:\\clean_engry_system\\results_v1\\08_stochastic_planning\\results\\v4_stochastic_planning\\stochastic_capacity_result.csv",
+      "E:\\clean_engry_system\\results_v1\\08_stochastic_planning\\results\\v4_stochastic_planning\\stochastic_capacity_result.xlsx",
+      "E:\\clean_engry_system\\results_v1\\08_stochastic_planning\\results\\v4_stochastic_planning\\stochastic_typical_uncertainty_operation.csv",
+      "E:\\clean_engry_system\\results_v1\\08_stochastic_planning\\results\\v4_stochastic_planning\\stochastic_hourly_results.csv",
+      "E:\\clean_engry_system\\results_v1\\08_stochastic_planning\\results\\v4_stochastic_planning\\stochastic_capacity_mix.png",
+      "E:\\clean_engry_system\\results_v1\\08_stochastic_planning\\results\\v4_stochastic_planning\\stochastic_cost_breakdown.png",
+      "E:\\clean_engry_system\\results_v1\\08_stochastic_planning\\results\\v4_stochastic_planning\\stochastic_uncertainty_cost.png",
+      "E:\\clean_engry_system\\results_v1\\08_stochastic_planning\\results\\v4_stochastic_planning\\conclusion.md"
+    ]
+  },
+  {
+    "name": "09_robust_planning",
+    "status": "ok",
+    "output_dir": "E:\\clean_engry_system\\results_v1\\09_robust_planning",
+    "case_ids": [
+      "EXTREME"
+    ],
+    "file_count": 11,
+    "files": [
+      "E:\\clean_engry_system\\results_v1\\09_robust_planning\\results\\v4_robust_planning\\robust_summary.csv",
+      "E:\\clean_engry_system\\results_v1\\09_robust_planning\\results\\v4_robust_planning\\robust_summary.xlsx",
+      "E:\\clean_engry_system\\results_v1\\09_robust_planning\\results\\v4_robust_planning\\robust_capacity_result.csv",
+      "E:\\clean_engry_system\\results_v1\\09_robust_planning\\results\\v4_robust_planning\\robust_capacity_result.xlsx",
+      "E:\\clean_engry_system\\results_v1\\09_robust_planning\\results\\v4_robust_planning\\robust_uncertainty_case_results.csv",
+      "E:\\clean_engry_system\\results_v1\\09_robust_planning\\results\\v4_robust_planning\\robust_uncertainty_operation.csv",
+      "E:\\clean_engry_system\\results_v1\\09_robust_planning\\results\\v4_robust_planning\\robust_hourly_results.csv",
+      "E:\\clean_engry_system\\results_v1\\09_robust_planning\\results\\v4_robust_planning\\robust_capacity_mix.png",
+      "E:\\clean_engry_system\\results_v1\\09_robust_planning\\results\\v4_robust_planning\\robust_worst_case_cost.png",
+      "E:\\clean_engry_system\\results_v1\\09_robust_planning\\results\\v4_robust_planning\\robust_uncertainty_carbon.png",
+      "E:\\clean_engry_system\\results_v1\\09_robust_planning\\results\\v4_robust_planning\\conclusion.md"
+    ]
+  }
+]

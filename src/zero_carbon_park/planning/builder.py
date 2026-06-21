@@ -5,6 +5,10 @@ from __future__ import annotations
 from pyomo.environ import ConcreteModel, Param, RangeSet, Set
 
 from zero_carbon_park.models.parameters import parameter_frame_to_dict
+from zero_carbon_park.models.performance_curves import (
+    battery_degradation_segments,
+    conversion_segments,
+)
 from zero_carbon_park.planning.constraints import add_planning_constraints
 from zero_carbon_park.planning.cost_params import (
     PlanningCostParams,
@@ -41,6 +45,7 @@ def build_capacity_planning_model(
     _add_device_params(model, device)
     _add_economic_params(model, economic)
     _add_investment_params(model, cost_params)
+    _add_performance_curve_params(model, device, economic, cost_params)
     model.annual_carbon_emission_cap_kg = Param(
         initialize=(
             float(annual_carbon_emission_cap_kg)
@@ -100,6 +105,7 @@ def _add_timeseries_params(
 
     for column, param_name, default in [
         ("heat_pump_cop", "heat_pump_cop", device["heat_pump_COP"]),
+        ("heat_pump_available_ratio", "heat_pump_available_ratio", 1.0),
         (
             "electrolyzer_kwh_per_kg",
             "electrolyzer_kwh_per_kg",
@@ -141,6 +147,15 @@ def _add_device_params(model: ConcreteModel, device: dict[str, float]) -> None:
     model.gas_lhv = Param(initialize=float(device["gas_lhv_kwh_per_m3"]))
     model.battery_eta_ch = Param(initialize=float(device["battery_eta_ch"]))
     model.battery_eta_dis = Param(initialize=float(device["battery_eta_dis"]))
+    model.electrolyzer_min_load_rate = Param(
+        initialize=float(device.get("electrolyzer_min_load_rate", 0.0))
+    )
+    model.fuel_cell_min_load_rate = Param(
+        initialize=float(device.get("fuel_cell_min_load_rate", 0.0))
+    )
+    model.h2_storage_loss_rate_per_hour = Param(
+        initialize=float(device.get("h2_storage_loss_rate_per_hour", 0.0))
+    )
 
 
 def _add_economic_params(model: ConcreteModel, economic: dict[str, float]) -> None:
@@ -153,6 +168,75 @@ def _add_economic_params(model: ConcreteModel, economic: dict[str, float]) -> No
     model.fuel_cell_om = Param(initialize=float(economic["fuel_cell_om"]))
     model.h2_external_supply_cost = Param(
         initialize=float(economic.get("h2_external_supply_cost", 1000.0))
+    )
+    model.green_power_min_share = Param(
+        initialize=float(economic.get("green_power_min_share", 0.0))
+    )
+
+
+def _add_performance_curve_params(
+    model: ConcreteModel,
+    device: dict[str, float],
+    economic: dict[str, float],
+    cost_params: PlanningCostParams,
+) -> None:
+    electrolyzer_segments = conversion_segments(
+        device,
+        prefix="electrolyzer",
+        fallback_kwh_per_kg=float(device["electrolyzer_kWh_per_kgH2"]),
+    )
+    model.ELECTROLYZER_SEGMENTS = Set(
+        initialize=[segment.index for segment in electrolyzer_segments],
+        ordered=True,
+    )
+    model.electrolyzer_segment_power_fraction = Param(
+        model.ELECTROLYZER_SEGMENTS,
+        initialize={
+            segment.index: segment.width_rate for segment in electrolyzer_segments
+        },
+    )
+    model.electrolyzer_segment_kwh_per_kg = Param(
+        model.ELECTROLYZER_SEGMENTS,
+        initialize={
+            segment.index: segment.kwh_per_kg for segment in electrolyzer_segments
+        },
+    )
+
+    fuel_cell_segments = conversion_segments(
+        device,
+        prefix="fuel_cell",
+        fallback_kwh_per_kg=float(device["fuel_cell_kWh_per_kgH2"]),
+    )
+    model.FUEL_CELL_SEGMENTS = Set(
+        initialize=[segment.index for segment in fuel_cell_segments],
+        ordered=True,
+    )
+    model.fuel_cell_segment_power_fraction = Param(
+        model.FUEL_CELL_SEGMENTS,
+        initialize={segment.index: segment.width_rate for segment in fuel_cell_segments},
+    )
+    model.fuel_cell_segment_kwh_per_kg = Param(
+        model.FUEL_CELL_SEGMENTS,
+        initialize={segment.index: segment.kwh_per_kg for segment in fuel_cell_segments},
+    )
+
+    degradation_segments = battery_degradation_segments(
+        economic,
+        fallback_cost_cny_per_kwh=cost_params.battery_degradation_cost_cny_per_kwh,
+    )
+    model.BATTERY_DEGRADATION_SEGMENTS = Set(
+        initialize=[segment.index for segment in degradation_segments],
+        ordered=True,
+    )
+    model.battery_degradation_segment_width_rate = Param(
+        model.BATTERY_DEGRADATION_SEGMENTS,
+        initialize={segment.index: segment.width_rate for segment in degradation_segments},
+    )
+    model.battery_degradation_segment_cost = Param(
+        model.BATTERY_DEGRADATION_SEGMENTS,
+        initialize={
+            segment.index: segment.cost_cny_per_kwh for segment in degradation_segments
+        },
     )
 
 

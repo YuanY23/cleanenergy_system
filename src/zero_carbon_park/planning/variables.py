@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pyomo.environ import ConcreteModel, NonNegativeReals, Var
+from pyomo.environ import Binary, ConcreteModel, NonNegativeReals, Var
 
 
 def add_capacity_variables(model: ConcreteModel) -> None:
@@ -41,13 +41,31 @@ def add_operation_variables(model: ConcreteModel) -> None:
     model.battery_soc = Var(model.D, model.T, domain=NonNegativeReals)
 
     model.electrolyzer_power = Var(model.D, model.T, domain=NonNegativeReals)
+    model.electrolyzer_power_segment = Var(
+        model.D, model.T, model.ELECTROLYZER_SEGMENTS, domain=NonNegativeReals
+    )
+    model.h2_production_segment = Var(
+        model.D, model.T, model.ELECTROLYZER_SEGMENTS, domain=NonNegativeReals
+    )
     model.h2_production = Var(model.D, model.T, domain=NonNegativeReals)
+    model.is_electrolyzer_on = Var(model.D, model.T, domain=Binary)
     model.h2_charge = Var(model.D, model.T, domain=NonNegativeReals)
     model.h2_discharge = Var(model.D, model.T, domain=NonNegativeReals)
     model.h2_storage = Var(model.D, model.T, domain=NonNegativeReals)
     model.h2_external_supply = Var(model.D, model.T, domain=NonNegativeReals)
     model.h2_fuel_cell = Var(model.D, model.T, domain=NonNegativeReals)
+    model.h2_fuel_cell_segment = Var(
+        model.D, model.T, model.FUEL_CELL_SEGMENTS, domain=NonNegativeReals
+    )
+    model.fuel_cell_power_segment = Var(
+        model.D, model.T, model.FUEL_CELL_SEGMENTS, domain=NonNegativeReals
+    )
     model.fuel_cell_power = Var(model.D, model.T, domain=NonNegativeReals)
+    model.is_fuel_cell_on = Var(model.D, model.T, domain=Binary)
     model.fuel_cell_backup_capacity_kw = Var(domain=NonNegativeReals)
+
+    model.battery_degradation_throughput_segment = Var(
+        model.D, model.T, model.BATTERY_DEGRADATION_SEGMENTS, domain=NonNegativeReals
+    )
 
     model.carbon_emission = Var(model.D, model.T, domain=NonNegativeReals)

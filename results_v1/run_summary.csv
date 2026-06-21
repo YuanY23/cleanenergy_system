@@ -1,0 +1,11 @@
+﻿name,status,output_dir,case_ids,file_count,error
+input,ok,,,0,
+01_full_pipeline,ok,E:\clean_engry_system\results_v1\01_full_pipeline,,0,
+02_typical_days,ok,E:\clean_engry_system\results_v1\02_typical_days,,0,
+03_annualization,ok,E:\clean_engry_system\results_v1\03_annualization,,0,
+04_capacity_planning,ok,E:\clean_engry_system\results_v1\04_capacity_planning,,0,
+05_investment_sensitivity,ok,E:\clean_engry_system\results_v1\05_investment_sensitivity,,0,
+06_pareto_cost_carbon,ok,E:\clean_engry_system\results_v1\06_pareto_cost_carbon,,0,
+07_uncertainty_stress_test,ok,E:\clean_engry_system\results_v1\07_uncertainty_stress_test,,0,
+08_stochastic_planning,ok,E:\clean_engry_system\results_v1\08_stochastic_planning,"NORMAL,LOAD_HIGH,EXTREME",10,
+09_robust_planning,ok,E:\clean_engry_system\results_v1\09_robust_planning,EXTREME,11,

@@ -10,7 +10,12 @@ def add_heat_constraints(model: ConcreteModel) -> None:
 
     def heat_pump_capacity_rule(m, t):
         # 热泵耗电功率不能超过额定功率；是否可运行由场景开关控制。
-        return m.heat_pump_power[t] <= m.is_heat_pump_on[t] * m.heat_pump_power_max
+        return (
+            m.heat_pump_power[t]
+            <= m.is_heat_pump_on[t]
+            * m.heat_pump_power_max
+            * m.heat_pump_available_ratio[t]
+        )
 
     model.heat_pump_capacity_constraint = Constraint(
         model.T, rule=heat_pump_capacity_rule
@@ -18,7 +23,7 @@ def add_heat_constraints(model: ConcreteModel) -> None:
 
     def heat_pump_conversion_rule(m, t):
         # 热泵供热量等于耗电功率乘以 COP。
-        return m.heat_pump_heat[t] == m.heat_pump_power[t] * m.heat_pump_cop
+        return m.heat_pump_heat[t] == m.heat_pump_power[t] * m.heat_pump_cop[t]
 
     model.heat_pump_conversion_constraint = Constraint(
         model.T, rule=heat_pump_conversion_rule

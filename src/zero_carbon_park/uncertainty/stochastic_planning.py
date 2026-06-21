@@ -21,6 +21,7 @@ from zero_carbon_park.typical_days.generator import generate_typical_day_workboo
 from zero_carbon_park.uncertainty.definitions import (
     UncertaintyCase,
     get_default_uncertainty_cases,
+    select_uncertainty_cases,
 )
 from zero_carbon_park.uncertainty.generator import generate_uncertainty_workbook
 
@@ -45,19 +46,23 @@ def build_stochastic_typical_days(
     """构建“典型日 × 不确定性场景”的随机规划输入。"""
 
     cases = uncertainty_cases or get_default_uncertainty_cases()
+    probability_sum = sum(case.probability for case in cases)
+    if probability_sum <= 0:
+        raise ValueError("不确定性场景概率之和必须大于 0")
     stochastic_days = []
     for typical_config in get_default_typical_days():
         typical_workbook = generate_typical_day_workbook(workbook, typical_config)
         for case in cases:
+            normalized_probability = case.probability / probability_sum
             stochastic_workbook = generate_uncertainty_workbook(typical_workbook, case)
             stochastic_config = StochasticDayConfig(
                 day_id=f"{typical_config.day_id}__{case.case_id}",
                 name=f"{typical_config.name}-{case.name}",
-                weight_days=typical_config.weight_days * case.probability,
+                weight_days=typical_config.weight_days * normalized_probability,
                 typical_day_id=typical_config.day_id,
                 uncertainty_case_id=case.case_id,
                 uncertainty_case_name=case.name,
-                uncertainty_probability=case.probability,
+                uncertainty_probability=normalized_probability,
             )
             stochastic_days.append((stochastic_config, stochastic_workbook))
     return stochastic_days
@@ -66,11 +71,13 @@ def build_stochastic_typical_days(
 def run_stochastic_capacity_planning(
     workbook_path: str | Path,
     output_root: str | Path = "outputs",
+    uncertainty_case_ids: list[str] | None = None,
 ) -> dict[str, Path]:
     """运行场景概率加权随机容量规划。"""
 
     workbook = load_input_workbook(workbook_path)
-    stochastic_days = build_stochastic_typical_days(workbook)
+    uncertainty_cases = select_uncertainty_cases(uncertainty_case_ids)
+    stochastic_days = build_stochastic_typical_days(workbook, uncertainty_cases)
     model = build_capacity_planning_model(
         stochastic_days,
         get_default_planning_cost_params(),
@@ -82,7 +89,7 @@ def run_stochastic_capacity_planning(
     hourly = _split_stochastic_operation(results["hourly"])
     summary = results["summary"].copy()
     summary.insert(0, "stochastic_day_count", len(stochastic_days))
-    summary.insert(1, "uncertainty_case_count", len(get_default_uncertainty_cases()))
+    summary.insert(1, "uncertainty_case_count", len(uncertainty_cases))
 
     output_dir = Path(output_root) / "results" / "v4_stochastic_planning"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -251,4 +258,3 @@ def _export_conclusion(
 def _configure_font() -> None:
     plt.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "Arial Unicode MS"]
     plt.rcParams["axes.unicode_minus"] = False
-

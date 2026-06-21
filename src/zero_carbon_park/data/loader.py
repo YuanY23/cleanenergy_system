@@ -35,6 +35,13 @@ TIMESERIES_COLUMNS = {
     "carbon_price_yuan_per_tCO2": "carbon_price_cny_per_tco2",
 }
 
+OPTIONAL_TIMESERIES_COLUMNS = [
+    "heat_pump_cop",
+    "heat_pump_available_ratio",
+    "electrolyzer_kwh_per_kg",
+    "fuel_cell_kwh_per_kg",
+]
+
 PARAMETER_COLUMNS = {
     "类别": "category",
     "参数": "name_cn",
@@ -56,7 +63,14 @@ SCENARIO_COLUMNS = {
     "作用": "purpose",
 }
 
-ECONOMIC_CATEGORIES = {"能源价格", "碳价", "碳排放", "惩罚成本", "运维成本"}
+ECONOMIC_CATEGORIES = {
+    "能源价格",
+    "碳价",
+    "碳排放",
+    "惩罚成本",
+    "运维成本",
+    "政策约束",
+}
 
 
 def load_input_workbook(path: str | Path) -> InputWorkbook:
@@ -74,7 +88,10 @@ def load_input_workbook(path: str | Path) -> InputWorkbook:
     # 读取 24 小时时间序列，并删除说明列，避免模型阶段混入文本字段。
     timeseries = pd.read_excel(workbook_path, sheet_name=3)
     timeseries = timeseries.rename(columns=TIMESERIES_COLUMNS)
-    timeseries = timeseries[list(TIMESERIES_COLUMNS.values())]
+    timeseries_columns = list(TIMESERIES_COLUMNS.values()) + [
+        column for column in OPTIONAL_TIMESERIES_COLUMNS if column in timeseries.columns
+    ]
+    timeseries = timeseries[timeseries_columns]
     timeseries["hour"] = timeseries["hour"].astype(int)
 
     # 读取参数总表，并统一字段名。

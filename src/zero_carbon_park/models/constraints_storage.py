@@ -55,3 +55,29 @@ def add_battery_constraints(model: ConcreteModel) -> None:
         return m.battery_soc[m.T.last()] == m.battery_initial_soc
 
     model.battery_terminal_constraint = Constraint(rule=battery_terminal_rule)
+
+    def battery_degradation_throughput_rule(m, t):
+        return (
+            sum(
+                m.battery_degradation_throughput_segment[t, segment]
+                for segment in m.BATTERY_DEGRADATION_SEGMENTS
+            )
+            == m.battery_charge[t] + m.battery_discharge[t]
+        )
+
+    model.battery_degradation_throughput_constraint = Constraint(
+        model.T, rule=battery_degradation_throughput_rule
+    )
+
+    def battery_degradation_segment_limit_rule(m, t, segment):
+        return (
+            m.battery_degradation_throughput_segment[t, segment]
+            <= m.battery_degradation_segment_width_rate[segment]
+            * m.battery_energy_max
+        )
+
+    model.battery_degradation_segment_limit_constraint = Constraint(
+        model.T,
+        model.BATTERY_DEGRADATION_SEGMENTS,
+        rule=battery_degradation_segment_limit_rule,
+    )

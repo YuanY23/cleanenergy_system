@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pandas as pd
-from pyomo.environ import ConcreteModel, Param
+from pyomo.environ import ConcreteModel, Param, Set
 
 from zero_carbon_park.models.constraints_carbon import add_carbon_constraints
 from zero_carbon_park.models.constraints_heat import add_heat_constraints
@@ -15,6 +15,10 @@ from zero_carbon_park.models.constraints_power import (
 from zero_carbon_park.models.constraints_storage import add_battery_constraints
 from zero_carbon_park.models.objective import add_total_cost_objective
 from zero_carbon_park.models.parameters import parameter_frame_to_dict
+from zero_carbon_park.models.performance_curves import (
+    battery_degradation_segments,
+    conversion_segments,
+)
 from zero_carbon_park.models.sets import add_time_set
 from zero_carbon_park.models.variables import add_decision_variables
 from zero_carbon_park.scenarios.definitions import ScenarioConfig
@@ -60,6 +64,7 @@ def build_minimal_milp_model(
         renewable_enabled,
         hydrogen_enabled,
         carbon_price_enabled,
+        heat_pump_cop_default=float(device["heat_pump_COP"]),
     )
     _add_device_and_economic_params(
         model,
@@ -70,6 +75,7 @@ def build_minimal_milp_model(
         hydrogen_enabled,
         fuel_cell_enabled,
     )
+    _add_performance_curve_params(model, device, economic)
     add_decision_variables(model)
     add_renewable_constraints(model)
     add_heat_constraints(model)
@@ -88,6 +94,7 @@ def _add_timeseries_params(
     renewable_enabled: float,
     hydrogen_enabled: float,
     carbon_price_enabled: float,
+    heat_pump_cop_default: float,
 ) -> None:
     """把逐小时输入数据写入模型参数。"""
 
@@ -96,6 +103,20 @@ def _add_timeseries_params(
     )
     model.heat_load = Param(
         model.T, initialize={t: float(data.loc[t, "heat_load_kw"]) for t in model.T}
+    )
+    model.heat_pump_cop = Param(
+        model.T,
+        initialize={
+            t: _timeseries_value(data, t, "heat_pump_cop", heat_pump_cop_default)
+            for t in model.T
+        },
+    )
+    model.heat_pump_available_ratio = Param(
+        model.T,
+        initialize={
+            t: _timeseries_value(data, t, "heat_pump_available_ratio", 1.0)
+            for t in model.T
+        },
     )
     model.hydrogen_load = Param(
         model.T,
@@ -158,7 +179,6 @@ def _add_device_and_economic_params(
     model.heat_pump_power_max = Param(
         initialize=float(device["heat_pump_power_kW"]) * heat_pump_enabled
     )
-    model.heat_pump_cop = Param(initialize=float(device["heat_pump_COP"]))
     model.gas_boiler_heat_max = Param(initialize=float(device["gas_boiler_heat_kW"]))
     model.gas_boiler_eff = Param(initialize=float(device["gas_boiler_eff"]))
     model.gas_lhv = Param(initialize=float(device["gas_lhv_kwh_per_m3"]))
@@ -181,17 +201,26 @@ def _add_device_and_economic_params(
     model.electrolyzer_kwh_per_kg = Param(
         initialize=float(device["electrolyzer_kWh_per_kgH2"])
     )
+    model.electrolyzer_min_load_rate = Param(
+        initialize=float(device.get("electrolyzer_min_load_rate", 0.0))
+    )
     model.h2_storage_capacity = Param(
         initialize=float(device["h2_storage_capacity_kg"]) * hydrogen_enabled
     )
     model.h2_storage_initial = Param(
         initialize=float(device["h2_storage_initial_kg"]) * hydrogen_enabled
     )
+    model.h2_storage_loss_rate_per_hour = Param(
+        initialize=float(device.get("h2_storage_loss_rate_per_hour", 0.0))
+    )
     model.fuel_cell_power_max = Param(
         initialize=float(device["fuel_cell_power_kW"]) * fuel_cell_enabled
     )
     model.fuel_cell_kwh_per_kg = Param(
         initialize=float(device["fuel_cell_kWh_per_kgH2"])
+    )
+    model.fuel_cell_min_load_rate = Param(
+        initialize=float(device.get("fuel_cell_min_load_rate", 0.0))
     )
 
     model.gas_emission_factor = Param(initialize=float(economic["gas_emission_factor"]))
@@ -220,3 +249,78 @@ def _add_device_and_economic_params(
         # 默认最低消纳率为 0，不影响既有场景。
         initialize=float(economic.get("renewable_min_consumption_rate", 0.0))
     )
+
+
+def _add_performance_curve_params(
+    model: ConcreteModel,
+    device: dict[str, float],
+    economic: dict[str, float],
+) -> None:
+    electrolyzer_segments = conversion_segments(
+        device,
+        prefix="electrolyzer",
+        fallback_kwh_per_kg=float(device["electrolyzer_kWh_per_kgH2"]),
+    )
+    model.ELECTROLYZER_SEGMENTS = Set(
+        initialize=[segment.index for segment in electrolyzer_segments],
+        ordered=True,
+    )
+    model.electrolyzer_segment_power_fraction = Param(
+        model.ELECTROLYZER_SEGMENTS,
+        initialize={
+            segment.index: segment.width_rate for segment in electrolyzer_segments
+        },
+    )
+    model.electrolyzer_segment_kwh_per_kg = Param(
+        model.ELECTROLYZER_SEGMENTS,
+        initialize={
+            segment.index: segment.kwh_per_kg for segment in electrolyzer_segments
+        },
+    )
+
+    fuel_cell_segments = conversion_segments(
+        device,
+        prefix="fuel_cell",
+        fallback_kwh_per_kg=float(device["fuel_cell_kWh_per_kgH2"]),
+    )
+    model.FUEL_CELL_SEGMENTS = Set(
+        initialize=[segment.index for segment in fuel_cell_segments],
+        ordered=True,
+    )
+    model.fuel_cell_segment_power_fraction = Param(
+        model.FUEL_CELL_SEGMENTS,
+        initialize={segment.index: segment.width_rate for segment in fuel_cell_segments},
+    )
+    model.fuel_cell_segment_kwh_per_kg = Param(
+        model.FUEL_CELL_SEGMENTS,
+        initialize={segment.index: segment.kwh_per_kg for segment in fuel_cell_segments},
+    )
+
+    degradation_segments = battery_degradation_segments(
+        economic,
+        fallback_cost_cny_per_kwh=float(
+            economic.get("battery_degradation_cost_cny_per_kwh", 0.0)
+        ),
+    )
+    model.BATTERY_DEGRADATION_SEGMENTS = Set(
+        initialize=[segment.index for segment in degradation_segments],
+        ordered=True,
+    )
+    model.battery_degradation_segment_width_rate = Param(
+        model.BATTERY_DEGRADATION_SEGMENTS,
+        initialize={segment.index: segment.width_rate for segment in degradation_segments},
+    )
+    model.battery_degradation_segment_cost = Param(
+        model.BATTERY_DEGRADATION_SEGMENTS,
+        initialize={
+            segment.index: segment.cost_cny_per_kwh for segment in degradation_segments
+        },
+    )
+
+
+def _timeseries_value(
+    frame: pd.DataFrame, row_index: int, column: str, default: float
+) -> float:
+    if column in frame.columns:
+        return float(frame.loc[row_index, column])
+    return float(default)

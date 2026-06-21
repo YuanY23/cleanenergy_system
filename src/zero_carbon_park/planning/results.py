@@ -104,6 +104,12 @@ def _extract_typical_day_operation(model, hourly: pd.DataFrame) -> pd.DataFrame:
         )
         renewable_used = day["pv_used_kw"].sum() + day["wind_used_kw"].sum()
         renewable_sold = day["pv_sold_kw"].sum() + day["wind_sold_kw"].sum()
+        electricity_demand = (
+            day["electric_load_kw"].sum()
+            + day["heat_pump_power_kw"].sum()
+            + day["battery_charge_kw"].sum()
+            + day["electrolyzer_power_kw"].sum()
+        )
         total_cost = _daily_operation_cost(model, d)
         carbon_emission = day["carbon_emission_kg"].sum()
         rows.append(
@@ -122,6 +128,10 @@ def _extract_typical_day_operation(model, hourly: pd.DataFrame) -> pd.DataFrame:
                 "renewable_consumption_rate": (
                     renewable_used / renewable_available if renewable_available > 0 else 0.0
                 ),
+                "green_power_share": (
+                    renewable_used / electricity_demand if electricity_demand > 0 else 0.0
+                ),
+                "electricity_demand_kwh": electricity_demand,
                 "carbon_emission_kg": carbon_emission,
                 "heat_pump_heat_kwh": day["heat_pump_heat_kw"].sum(),
                 "gas_boiler_heat_kwh": day["gas_boiler_heat_kw"].sum(),
@@ -131,6 +141,8 @@ def _extract_typical_day_operation(model, hourly: pd.DataFrame) -> pd.DataFrame:
                 "weighted_total_cost_cny": total_cost * weight_days,
                 "weighted_grid_purchase_kwh": day["grid_buy_kw"].sum() * weight_days,
                 "weighted_grid_sell_kwh": day["grid_sell_kw"].sum() * weight_days,
+                "weighted_electricity_demand_kwh": electricity_demand * weight_days,
+                "weighted_green_power_kwh": renewable_used * weight_days,
                 "weighted_carbon_emission_kg": carbon_emission * weight_days,
                 "weighted_heat_pump_heat_kwh": day["heat_pump_heat_kw"].sum()
                 * weight_days,
@@ -159,6 +171,10 @@ def _extract_planning_summary(model, status: str, typical_day_operation: pd.Data
     annual_renewable_used = (
         typical_day_operation["renewable_used_kwh"] * typical_day_operation["weight_days"]
     ).sum()
+    annual_green_power = typical_day_operation["weighted_green_power_kwh"].sum()
+    annual_electricity_demand = typical_day_operation[
+        "weighted_electricity_demand_kwh"
+    ].sum()
 
     return pd.DataFrame(
         [
@@ -188,6 +204,14 @@ def _extract_planning_summary(model, status: str, typical_day_operation: pd.Data
                     if annual_renewable_available > 0
                     else 0.0
                 ),
+                "green_power_min_share": value(model.green_power_min_share),
+                "annual_green_power_share": (
+                    annual_green_power / annual_electricity_demand
+                    if annual_electricity_demand > 0
+                    else 0.0
+                ),
+                "annual_electricity_demand_kwh": annual_electricity_demand,
+                "annual_green_power_kwh": annual_green_power,
                 "annual_h2_external_supply_kg": (
                     typical_day_operation["h2_external_supply_kg"]
                     * typical_day_operation["weight_days"]
@@ -214,8 +238,11 @@ def _daily_operation_cost(model, d) -> float:
             + model.carbon_emission[d, t] * model.carbon_price[d, t]
             + (model.battery_charge[d, t] + model.battery_discharge[d, t])
             * model.battery_om
-            + (model.battery_charge[d, t] + model.battery_discharge[d, t])
-            * model.battery_degradation_cost_cny_per_kwh
+            + sum(
+                model.battery_degradation_throughput_segment[d, t, segment]
+                * model.battery_degradation_segment_cost[segment]
+                for segment in model.BATTERY_DEGRADATION_SEGMENTS
+            )
             + model.h2_production[d, t] * model.electrolyzer_om
             + model.h2_external_supply[d, t] * model.h2_external_supply_cost
             + model.fuel_cell_power[d, t] * model.fuel_cell_om

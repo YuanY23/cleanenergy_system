@@ -81,7 +81,11 @@ def extract_minimal_results(model, scenario_id: str, status: str) -> ScenarioRes
 
         # 燃料电池转换残差，理论上应接近 0。
         fuel_cell_conversion_residual_kw = (
-            fuel_cell_power_kw - h2_fuel_cell_kg * value(model.fuel_cell_kwh_per_kg)
+            fuel_cell_power_kw
+            - sum(
+                value(model.fuel_cell_power_segment[t, segment])
+                for segment in model.FUEL_CELL_SEGMENTS
+            )
         )
 
         hourly_rows.append(
@@ -144,6 +148,12 @@ def extract_minimal_results(model, scenario_id: str, status: str) -> ScenarioRes
         * value(model.battery_om)
         for t in model.T
     )
+    battery_degradation_cost = sum(
+        value(model.battery_degradation_throughput_segment[t, segment])
+        * value(model.battery_degradation_segment_cost[segment])
+        for t in model.T
+        for segment in model.BATTERY_DEGRADATION_SEGMENTS
+    )
     electrolyzer_om_cost = sum(
         value(model.h2_production[t]) * value(model.electrolyzer_om) for t in model.T
     )
@@ -182,6 +192,7 @@ def extract_minimal_results(model, scenario_id: str, status: str) -> ScenarioRes
         "curtailment_cost_cny": curtailment_cost,
         "carbon_cost_cny": carbon_cost,
         "battery_om_cost_cny": battery_om_cost,
+        "battery_degradation_cost_cny": battery_degradation_cost,
         "electrolyzer_om_cost_cny": electrolyzer_om_cost,
         "h2_external_supply_cost_cny": h2_external_supply_cost,
         "h2_sale_revenue_cny": h2_sale_revenue,

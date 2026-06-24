@@ -1,7 +1,0 @@
-﻿scenario_id,scenario_name,enabled_items,key_settings,main_metrics,purpose
-S0,传统供能,外部电网 + 燃气锅炉,wind=pv=battery=electrolyzer=storage=fuelcell=0,总成本、购电量、气耗、碳排放,基准场景
-S1,加入风光,电网 + 燃气锅炉 + 风电 + 光伏,use_renewables=True,新能源消纳、弃风弃光、购电减少,评估风光直接替代
-S2,风光 + 电池,S1 + 电池储能,use_battery=True,储能充放电、峰谷套利、弃电变化,评估电储能价值
-S3,风光储 + 制氢储氢,S2 + 电解槽 + 储氢 + 氢负荷,use_hydrogen=True,制氢量、储氢、外购氢,评估氢能消纳
-S4,电热氢储完整系统,S3 + 热泵 + 燃料电池,use_heat_pump=True; use_fuel_cell=True,电热氢耦合、备用发电,完整系统调度
-S5,完整系统 + 碳价,S4 + 碳成本,use_carbon_price=True,碳排放、碳成本、低碳调度,低碳经济性对比

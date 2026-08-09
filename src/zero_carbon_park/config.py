@@ -36,15 +36,48 @@ class SolverConfig:
 
 @dataclass(frozen=True)
 class CapacityBounds:
-    """Engineering search envelope sized for a 150 MW-class industrial park."""
+    """Engineering search envelope sized for the calibrated 450 MW park."""
 
-    pv_mw: tuple[float, float] = (0.0, 600.0)
-    wind_mw: tuple[float, float] = (0.0, 600.0)
-    grid_connection_mw: tuple[float, float] = (0.0, 300.0)
-    battery_power_mw: tuple[float, float] = (0.0, 300.0)
-    battery_energy_mwh: tuple[float, float] = (0.0, 2_400.0)
-    electrolyzer_mw: tuple[float, float] = (0.0, 300.0)
-    hydrogen_storage_kg: tuple[float, float] = (0.0, 1_000_000.0)
+    pv_mw: tuple[float, float] = (0.0, 1_500.0)
+    wind_mw: tuple[float, float] = (0.0, 1_500.0)
+    grid_connection_mw: tuple[float, float] = (0.0, 600.0)
+    battery_power_mw: tuple[float, float] = (0.0, 600.0)
+    battery_energy_mwh: tuple[float, float] = (0.0, 4_800.0)
+    electrolyzer_mw: tuple[float, float] = (0.0, 600.0)
+    hydrogen_storage_kg: tuple[float, float] = (0.0, 3_000_000.0)
+    fuel_cell_mw: tuple[float, float] = (0.0, 600.0)
+    heat_pump_mw: tuple[float, float] = (0.0, 600.0)
+
+
+@dataclass(frozen=True)
+class LoadReconstructionConfig:
+    """Auditable synthetic-load calibration targets, never SCADA claims."""
+
+    annual_electricity_mwh: float = 3_100_000.0
+    peak_electric_load_mw: float = 450.0
+    annual_heat_energy_mwh: float = 1_150_000.0
+    peak_heat_load_mw_th: float = 270.0
+    daily_hydrogen_demand_kg: float = 30_000.0
+    hydrogen_interruptible_share: float = 0.30
+    heating_balance_temperature_c: float = 18.0
+    cooling_balance_temperature_c: float = 24.0
+    load_scale_sensitivities: tuple[float, float, float] = (0.5, 1.0, 1.5)
+    scale_evidence_source_id: str = "ORDOS_ZERO_CARBON_PARK_SCALE_2025"
+
+    def __post_init__(self) -> None:
+        positive = {
+            "annual_electricity_mwh": self.annual_electricity_mwh,
+            "peak_electric_load_mw": self.peak_electric_load_mw,
+            "annual_heat_energy_mwh": self.annual_heat_energy_mwh,
+            "peak_heat_load_mw_th": self.peak_heat_load_mw_th,
+            "daily_hydrogen_demand_kg": self.daily_hydrogen_demand_kg,
+        }
+        if any(value <= 0 for value in positive.values()):
+            raise ValueError("load calibration targets must be positive")
+        if not 0 <= self.hydrogen_interruptible_share <= 1:
+            raise ValueError("hydrogen_interruptible_share must be within [0, 1]")
+        if not all(scale > 0 for scale in self.load_scale_sensitivities):
+            raise ValueError("load scale sensitivities must be positive")
 
 
 @dataclass(frozen=True)
@@ -52,7 +85,8 @@ class StudyConfig:
     study_year: int = 2024
     expected_hours: int = 8_784
     local_timezone: str = "Asia/Shanghai"
-    park_peak_electric_load_mw: float = 150.0
+    park_peak_electric_load_mw: float = 450.0
+    load: LoadReconstructionConfig = field(default_factory=LoadReconstructionConfig)
     capacity_bounds: CapacityBounds = field(default_factory=CapacityBounds)
     solver: SolverConfig = field(default_factory=SolverConfig)
 

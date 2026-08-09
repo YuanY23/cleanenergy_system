@@ -1,18 +1,31 @@
 schema_version: 1
 assumptions:
   - field_name: park_peak_electric_load_mw
-    base_value: 150.0
-    lower_bound: 75.0
-    upper_bound: 225.0
+    base_value: 450.0
+    lower_bound: 225.0
+    upper_bound: 675.0
     unit: MW
     source_category: engineering_assumption
-    confidence: low
-    source_ids: [ERA5_SINGLE_LEVELS_2024]
+    confidence: medium
+    source_ids: [ORDOS_ZERO_CARBON_PARK_SCALE_2025]
     rationale: >-
-      Public park-scale evidence has not yet been pinned, so the approved plan's
-      150 MW study scale is retained transparently with 50%, 100%, and 150%
-      sensitivities.
+      Ordos reports 3.10 TWh electricity use by new-energy enterprises in the park
+      during 2024. Dividing that annual energy by 8784 hours and the declared
+      engineering load factor 0.786 gives 449.0 MW, rounded to a 450 MW peak.
     notes: Synthetic calibration target; never describe as SCADA or measured load.
+
+  - field_name: annual_electricity_mwh
+    base_value: 3100000.0
+    lower_bound: 1550000.0
+    upper_bound: 4650000.0
+    unit: MWh/year
+    source_category: engineering_assumption
+    confidence: medium
+    source_ids: [ORDOS_ZERO_CARBON_PARK_SCALE_2025]
+    rationale: >-
+      Uses the official 2024 park-scale statement of 3.1 billion kWh as the public
+      calibration magnitude for a synthetic case, with 50/100/150% sensitivities.
+    notes: Public scale calibration, not an hourly metered profile.
 
   - field_name: critical_electric_load_share
     base_value: 0.30
@@ -41,22 +54,22 @@ assumptions:
     notes: U4 validates that all load-tier shares sum to one.
 
   - field_name: peak_heat_load_mw_th
-    base_value: 90.0
-    lower_bound: 45.0
-    upper_bound: 135.0
+    base_value: 270.0
+    lower_bound: 135.0
+    upper_bound: 405.0
     unit: MW_th
     source_category: engineering_assumption
     confidence: low
     source_ids: [ERA5_SINGLE_LEVELS_2024]
     rationale: >-
-      Initial process-plus-space-heating study scale, subsequently shaped with
-      temperature and calibrated against the electric-load scale.
-    notes: Synthetic heat demand; U4 must publish annual energy and temperature response.
+      Process-plus-space-heating scenario scaled consistently with the calibrated
+      electric-load case and shaped by ERA5 heating-degree hours.
+    notes: Synthetic heat demand; the baseline annual target is 1.15 TWh_th.
 
   - field_name: daily_hydrogen_demand_kg
-    base_value: 10000.0
-    lower_bound: 5000.0
-    upper_bound: 15000.0
+    base_value: 30000.0
+    lower_bound: 15000.0
+    upper_bound: 45000.0
     unit: kgH2/day
     source_category: engineering_assumption
     confidence: low
@@ -91,3 +104,42 @@ assumptions:
       International installed-cost boundaries differ from domestic EPC scope, so
       localisation uncertainty is exposed instead of hidden in a point estimate.
     notes: Report the factor beside every converted CAPEX result.
+
+  - field_name: hydrogen_storage_capex_cny_per_kg
+    base_value: 2500.0
+    lower_bound: 1800.0
+    upper_bound: 3300.0
+    unit: CNY/kgH2
+    source_category: engineering_assumption
+    confidence: low
+    source_ids: [IEA_HYDROGEN_REVIEW_2025]
+    rationale: >-
+      No project quotation with a matching pressure, duration, and EPC boundary is
+      available, so the model exposes a bounded planning assumption.
+    notes: Replace with a vendor quotation before an investment decision.
+
+  - field_name: fuel_cell_capex_cny_per_kw
+    base_value: 6000.0
+    lower_bound: 4500.0
+    upper_bound: 8000.0
+    unit: CNY/kW
+    source_category: engineering_assumption
+    confidence: low
+    source_ids: [IEA_HYDROGEN_REVIEW_2025]
+    rationale: >-
+      Stationary emergency fuel-cell scope varies materially by balance-of-plant;
+      the interval is retained as an explicit planning assumption.
+    notes: Reliability value is assessed separately from equipment cost.
+
+  - field_name: heat_pump_capex_cny_per_kw
+    base_value: 1000.0
+    lower_bound: 750.0
+    upper_bound: 1350.0
+    unit: CNY/kW_th
+    source_category: engineering_assumption
+    confidence: low
+    source_ids: [ORDOS_ZERO_CARBON_PARK_SCALE_2025]
+    rationale: >-
+      A domestic project quotation is unavailable; this bounded assumption only
+      supports system-level screening at the public park scale.
+    notes: Replace with climate-specific equipment and installation quotations.

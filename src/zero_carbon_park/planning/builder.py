@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from pyomo.environ import ConcreteModel, Param, RangeSet, Set
 
 from zero_carbon_park.models.parameters import parameter_frame_to_dict
@@ -25,11 +27,32 @@ def build_capacity_planning_model(
     typical_days,
     cost_params: PlanningCostParams,
     annual_carbon_emission_cap_kg: float | None = None,
+    *,
+    capacity_mode: str = "free",
+    fixed_capacities: Mapping[str, float] | None = None,
+    capacity_upper_bounds: Mapping[str, float] | None = None,
+    islanded: bool = False,
+    allow_external_h2: bool | None = None,
+    initial_battery_soc_kwh: float | Mapping[str, float] | None = None,
+    final_battery_soc_kwh: float | Mapping[str, float] | None = None,
+    initial_h2_inventory_kg: float | Mapping[str, float] | None = None,
+    final_h2_inventory_kg: float | Mapping[str, float] | None = None,
+    performance_curve_mode: str = "constant_efficiency",
 ) -> ConcreteModel:
-    """构建多典型日容量规划优化模型。"""
+    """Build the common capacity/dispatch model.
+
+    ``capacity_mode='free'`` performs capacity planning. ``'fixed'`` fixes every
+    capacity and is the contract used by chronological replay and outage events.
+    State values may be scalars or day-id mappings; omitted states retain the
+    historical representative-day fractions (50% battery, 30% hydrogen).
+    """
 
     if not typical_days:
         raise ValueError("容量规划至少需要一个典型日")
+    if performance_curve_mode not in {"constant_efficiency", "ordered_incremental"}:
+        raise ValueError(
+            "performance_curve_mode must be constant_efficiency or ordered_incremental"
+        )
 
     first_workbook = typical_days[0][1]
     device = parameter_frame_to_dict(first_workbook.device_params)
@@ -40,12 +63,25 @@ def build_capacity_planning_model(
     model = ConcreteModel(name="capacity_planning")
     model.D = Set(initialize=day_ids, ordered=True)
     model.T = RangeSet(0, last_hour)
+    model.islanded = bool(islanded)
+    model.allow_external_h2 = bool(not islanded if allow_external_h2 is None else allow_external_h2)
+    model.performance_curve_mode = performance_curve_mode
+    if islanded and model.allow_external_h2:
+        raise ValueError("islanded operation cannot enable external hydrogen supply")
 
     _add_timeseries_params(model, typical_days, device, economic)
     _add_device_params(model, device)
     _add_economic_params(model, economic)
     _add_investment_params(model, cost_params)
     _add_performance_curve_params(model, device, economic, cost_params)
+    _add_boundary_state_params(
+        model,
+        day_ids,
+        initial_battery_soc_kwh=initial_battery_soc_kwh,
+        final_battery_soc_kwh=final_battery_soc_kwh,
+        initial_h2_inventory_kg=initial_h2_inventory_kg,
+        final_h2_inventory_kg=final_h2_inventory_kg,
+    )
     model.annual_carbon_emission_cap_kg = Param(
         initialize=(
             float(annual_carbon_emission_cap_kg)
@@ -54,7 +90,12 @@ def build_capacity_planning_model(
         )
     )
 
-    add_capacity_variables(model)
+    add_capacity_variables(
+        model,
+        capacity_mode=capacity_mode,
+        fixed_capacities=fixed_capacities,
+        capacity_upper_bounds=capacity_upper_bounds,
+    )
     add_operation_variables(model)
     add_planning_constraints(model)
     add_capacity_planning_objective(model)
@@ -93,6 +134,35 @@ def _add_timeseries_params(
             ),
         )
 
+    tier_columns = {
+        "critical_load": "critical_load_kw",
+        "important_load": "important_load_kw",
+        "interruptible_load": "interruptible_load_kw",
+    }
+    for param_name, column in tier_columns.items():
+        values = {}
+        for d in model.D:
+            frame = by_day[d][1]
+            explicit_tiers = all(name in frame.columns for name in tier_columns.values())
+            for t in model.T:
+                if explicit_tiers:
+                    selected = float(frame.loc[t, column])
+                elif param_name == "important_load":
+                    selected = float(frame.loc[t, "electric_load_kw"])
+                else:
+                    selected = 0.0
+                if selected < 0.0:
+                    raise ValueError(f"{column} cannot be negative")
+                values[(d, t)] = selected
+        setattr(model, param_name, Param(model.D, model.T, initialize=values))
+
+    for d in model.D:
+        frame = by_day[d][1]
+        if all(name in frame.columns for name in tier_columns.values()):
+            tier_sum = frame[list(tier_columns.values())].sum(axis=1)
+            if not (tier_sum - frame["electric_load_kw"]).abs().le(1.0e-6).all():
+                raise ValueError("tiered electric loads must sum to electric_load_kw")
+
     model.carbon_price = Param(
         model.D,
         model.T,
@@ -123,18 +193,31 @@ def _add_timeseries_params(
             "grid_sell_price",
             economic.get("grid_sell_price_cny_per_kwh", 0.0),
         ),
+        ("pv_available_ratio", "pv_available_ratio", 1.0),
+        ("wind_available_ratio", "wind_available_ratio", 1.0),
+        ("battery_available_ratio", "battery_available_ratio", 1.0),
+        ("electrolyzer_available_ratio", "electrolyzer_available_ratio", 1.0),
+        ("fuel_cell_available_ratio", "fuel_cell_available_ratio", 1.0),
+        ("grid_available_ratio", "grid_available_ratio", 1.0),
+        ("h2_external_available_ratio", "h2_external_available_ratio", 1.0),
+        ("gas_boiler_available_ratio", "gas_boiler_available_ratio", 1.0),
     ]:
+        values = {
+            (d, t): _timeseries_value(by_day[d][1], t, column, default)
+            for d in model.D
+            for t in model.T
+        }
+        if param_name.endswith("available_ratio") and any(
+            not 0.0 <= selected <= 1.0 for selected in values.values()
+        ):
+            raise ValueError(f"{column} must be within [0, 1]")
         setattr(
             model,
             param_name,
             Param(
                 model.D,
                 model.T,
-                initialize={
-                    (d, t): _timeseries_value(by_day[d][1], t, column, default)
-                    for d in model.D
-                    for t in model.T
-                },
+                initialize=values,
             ),
         )
 
@@ -156,6 +239,18 @@ def _add_device_params(model: ConcreteModel, device: dict[str, float]) -> None:
     model.h2_storage_loss_rate_per_hour = Param(
         initialize=float(device.get("h2_storage_loss_rate_per_hour", 0.0))
     )
+    model.h2_storage_charge_rate_per_hour = Param(
+        initialize=float(device.get("h2_storage_charge_rate_per_hour", 1.0))
+    )
+    model.h2_storage_discharge_rate_per_hour = Param(
+        initialize=float(device.get("h2_storage_discharge_rate_per_hour", 1.0))
+    )
+    model.electrolyzer_ramp_rate_per_hour = Param(
+        initialize=float(device.get("electrolyzer_ramp_rate_per_hour", 1.0))
+    )
+    model.fuel_cell_ramp_rate_per_hour = Param(
+        initialize=float(device.get("fuel_cell_ramp_rate_per_hour", 1.0))
+    )
 
 
 def _add_economic_params(model: ConcreteModel, economic: dict[str, float]) -> None:
@@ -171,6 +266,15 @@ def _add_economic_params(model: ConcreteModel, economic: dict[str, float]) -> No
     )
     model.green_power_min_share = Param(
         initialize=float(economic.get("green_power_min_share", 0.0))
+    )
+    model.critical_load_shed_penalty = Param(
+        initialize=float(economic.get("critical_load_shed_penalty_cny_per_kwh", 100_000.0))
+    )
+    model.important_load_shed_penalty = Param(
+        initialize=float(economic.get("important_load_shed_penalty_cny_per_kwh", 10_000.0))
+    )
+    model.interruptible_load_shed_penalty = Param(
+        initialize=float(economic.get("interruptible_load_shed_penalty_cny_per_kwh", 1_000.0))
     )
 
 
@@ -188,6 +292,9 @@ def _add_performance_curve_params(
     model.ELECTROLYZER_SEGMENTS = Set(
         initialize=[segment.index for segment in electrolyzer_segments],
         ordered=True,
+    )
+    model.ELECTROLYZER_ORDERED_SEGMENTS = Set(
+        initialize=[segment.index for segment in electrolyzer_segments[1:]], ordered=True
     )
     model.electrolyzer_segment_power_fraction = Param(
         model.ELECTROLYZER_SEGMENTS,
@@ -210,6 +317,9 @@ def _add_performance_curve_params(
     model.FUEL_CELL_SEGMENTS = Set(
         initialize=[segment.index for segment in fuel_cell_segments],
         ordered=True,
+    )
+    model.FUEL_CELL_ORDERED_SEGMENTS = Set(
+        initialize=[segment.index for segment in fuel_cell_segments[1:]], ordered=True
     )
     model.fuel_cell_segment_power_fraction = Param(
         model.FUEL_CELL_SEGMENTS,
@@ -291,6 +401,16 @@ def _add_investment_params(
         initialize=cost_params.fuel_cell_backup_required_kw
     )
     model.grid_export_limit_kw = Param(initialize=cost_params.grid_export_limit_kw)
+    model.grid_import_limit_kw = Param(
+        initialize=0.0 if model.islanded else cost_params.grid_import_limit_kw
+    )
+    model.h2_external_supply_limit_kg_per_hour = Param(
+        initialize=(
+            cost_params.h2_external_supply_limit_kg_per_hour
+            if model.allow_external_h2
+            else 0.0
+        )
+    )
     model.demand_charge_cny_per_kw_year = Param(
         initialize=cost_params.demand_charge_cny_per_kw_year
     )
@@ -300,3 +420,36 @@ def _timeseries_value(frame, row_index: int, column: str, default: float) -> flo
     if column in frame.columns:
         return float(frame.loc[row_index, column])
     return float(default)
+
+
+def _add_boundary_state_params(
+    model: ConcreteModel,
+    day_ids: list[str],
+    *,
+    initial_battery_soc_kwh,
+    final_battery_soc_kwh,
+    initial_h2_inventory_kg,
+    final_h2_inventory_kg,
+) -> None:
+    boundaries = {
+        "initial_battery_soc_kwh": (initial_battery_soc_kwh, 0.5),
+        "final_battery_soc_kwh": (final_battery_soc_kwh, 0.5),
+        "initial_h2_inventory_kg": (initial_h2_inventory_kg, 0.3),
+        "final_h2_inventory_kg": (final_h2_inventory_kg, 0.3),
+    }
+    model._absolute_boundary_state = {}
+    for name, (raw, fraction) in boundaries.items():
+        absolute = raw is not None
+        if raw is None:
+            values = {day_id: float(fraction) for day_id in day_ids}
+        elif isinstance(raw, Mapping):
+            missing = set(day_ids) - set(raw)
+            if missing:
+                raise ValueError(f"{name} is missing day ids: {sorted(missing)}")
+            values = {day_id: float(raw[day_id]) for day_id in day_ids}
+        else:
+            values = {day_id: float(raw) for day_id in day_ids}
+        if any(selected < 0.0 for selected in values.values()):
+            raise ValueError(f"{name} cannot be negative")
+        setattr(model, name, Param(model.D, initialize=values))
+        model._absolute_boundary_state[name] = absolute

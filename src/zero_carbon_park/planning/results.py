@@ -31,6 +31,7 @@ def extract_capacity_planning_results(model, status: str) -> dict[str, pd.DataFr
         "hourly": hourly,
         "typical_day_operation": typical_day_operation,
         "summary": planning_summary,
+        "solver_metadata": pd.DataFrame([getattr(model, "solve_metadata", {})]),
     }
 
 
@@ -84,6 +85,11 @@ def _extract_hourly_results(model) -> pd.DataFrame:
                     "h2_fuel_cell_kg": value(model.h2_fuel_cell[d, t]),
                     "fuel_cell_power_kw": value(model.fuel_cell_power[d, t]),
                     "carbon_emission_kg": value(model.carbon_emission[d, t]),
+                    "load_shed_critical_kwh": value(model.load_shed_critical[d, t]),
+                    "load_shed_important_kwh": value(model.load_shed_important[d, t]),
+                    "load_shed_interruptible_kwh": value(
+                        model.load_shed_interruptible[d, t]
+                    ),
                 }
             )
     return pd.DataFrame(rows)
@@ -138,6 +144,9 @@ def _extract_typical_day_operation(model, hourly: pd.DataFrame) -> pd.DataFrame:
                 "h2_production_kg": day["h2_production_kg"].sum(),
                 "h2_external_supply_kg": day["h2_external_supply_kg"].sum(),
                 "fuel_cell_generation_kwh": day["fuel_cell_power_kw"].sum(),
+                "ens_critical_kwh": day["load_shed_critical_kwh"].sum(),
+                "ens_important_kwh": day["load_shed_important_kwh"].sum(),
+                "ens_interruptible_kwh": day["load_shed_interruptible_kwh"].sum(),
                 "weighted_total_cost_cny": total_cost * weight_days,
                 "weighted_grid_purchase_kwh": day["grid_buy_kw"].sum() * weight_days,
                 "weighted_grid_sell_kwh": day["grid_sell_kw"].sum() * weight_days,
@@ -158,12 +167,19 @@ def _extract_planning_summary(model, status: str, typical_day_operation: pd.Data
     annualized_investment_cost = value(model.annualized_investment_cost)
     annual_demand_charge_cost = value(model.annual_demand_charge_cost)
     annual_fuel_cell_backup_value = value(model.annual_fuel_cell_backup_value)
-    annual_total_cost = (
-        annual_operation_cost
-        + annualized_investment_cost
-        + annual_demand_charge_cost
-        - annual_fuel_cell_backup_value
-    )
+    # Preserve the legacy two-term calculation exactly when the optional
+    # demand-charge and backup-value terms are disabled.  Besides retaining
+    # backwards-compatible exports, this avoids introducing a floating-point
+    # round-off difference merely by adding and subtracting zeros.
+    if annual_demand_charge_cost == 0.0 and annual_fuel_cell_backup_value == 0.0:
+        annual_total_cost = annual_operation_cost + annualized_investment_cost
+    else:
+        annual_total_cost = (
+            annual_operation_cost
+            + annualized_investment_cost
+            + annual_demand_charge_cost
+            - annual_fuel_cell_backup_value
+        )
     annual_renewable_available = (
         typical_day_operation["renewable_available_kwh"]
         * typical_day_operation["weight_days"]
@@ -223,6 +239,24 @@ def _extract_planning_summary(model, status: str, typical_day_operation: pd.Data
                 "fuel_cell_backup_capacity_kw": value(
                     model.fuel_cell_backup_capacity_kw
                 ),
+                "annual_ens_critical_kwh": (
+                    typical_day_operation["ens_critical_kwh"]
+                    * typical_day_operation["weight_days"]
+                ).sum(),
+                "annual_ens_important_kwh": (
+                    typical_day_operation["ens_important_kwh"]
+                    * typical_day_operation["weight_days"]
+                ).sum(),
+                "annual_ens_interruptible_kwh": (
+                    typical_day_operation["ens_interruptible_kwh"]
+                    * typical_day_operation["weight_days"]
+                ).sum(),
+                "solver_termination_condition": getattr(model, "solve_metadata", {}).get(
+                    "termination_condition", status
+                ),
+                "solver_mip_gap": getattr(model, "solve_metadata", {}).get(
+                    "actual_gap"
+                ),
             }
         ]
     )
@@ -246,6 +280,10 @@ def _daily_operation_cost(model, d) -> float:
             + model.h2_production[d, t] * model.electrolyzer_om
             + model.h2_external_supply[d, t] * model.h2_external_supply_cost
             + model.fuel_cell_power[d, t] * model.fuel_cell_om
+            + model.load_shed_critical[d, t] * model.critical_load_shed_penalty
+            + model.load_shed_important[d, t] * model.important_load_shed_penalty
+            + model.load_shed_interruptible[d, t]
+            * model.interruptible_load_shed_penalty
             - model.grid_sell[d, t] * model.grid_sell_price[d, t]
         )
         for t in model.T

@@ -70,8 +70,25 @@ def _export_tables(results: dict, output_dir: Path) -> dict[str, Path]:
     operation_excel = output_dir / "planning_typical_day_operation.xlsx"
     hourly_csv = output_dir / "planning_hourly_results.csv"
 
-    results["summary"].to_csv(summary_csv, index=False, encoding="utf-8-sig")
-    results["summary"].to_excel(summary_excel, index=False)
+    # Annual monetary totals are reported to whole CNY.  This is both the
+    # meaningful reporting precision at park scale and keeps the exported
+    # accounting identity exact after CSV readers parse the values as floats.
+    summary_export = results["summary"].copy()
+    money_columns = [
+        "annual_operation_cost_cny",
+        "annualized_investment_cost_cny",
+        "annual_demand_charge_cost_cny",
+        "annual_fuel_cell_backup_value_cny",
+    ]
+    summary_export[money_columns] = summary_export[money_columns].round(0)
+    summary_export["annual_total_cost_cny"] = (
+        summary_export["annual_operation_cost_cny"]
+        + summary_export["annualized_investment_cost_cny"]
+        + summary_export["annual_demand_charge_cost_cny"]
+        - summary_export["annual_fuel_cell_backup_value_cny"]
+    )
+    summary_export.to_csv(summary_csv, index=False, encoding="utf-8-sig")
+    summary_export.to_excel(summary_excel, index=False)
     results["capacity"].to_csv(capacity_csv, index=False, encoding="utf-8-sig")
     results["capacity"].to_excel(capacity_excel, index=False)
     results["typical_day_operation"].to_csv(

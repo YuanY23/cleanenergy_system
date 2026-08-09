@@ -25,6 +25,10 @@ def add_capacity_planning_objective(model: ConcreteModel) -> None:
                 + m.h2_production[d, t] * m.electrolyzer_om
                 + m.h2_external_supply[d, t] * m.h2_external_supply_cost
                 + m.fuel_cell_power[d, t] * m.fuel_cell_om
+                + m.load_shed_critical[d, t] * m.critical_load_shed_penalty
+                + m.load_shed_important[d, t] * m.important_load_shed_penalty
+                + m.load_shed_interruptible[d, t]
+                * m.interruptible_load_shed_penalty
                 - m.grid_sell[d, t] * m.grid_sell_price[d, t]
                 for t in m.T
             )

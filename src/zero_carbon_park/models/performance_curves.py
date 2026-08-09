@@ -36,23 +36,41 @@ def conversion_segments(
     index = 1
     previous_max_rate = 0.0
     while f"{prefix}_segment_{index}_max_rate" in params:
+        min_rate = float(
+            params.get(f"{prefix}_segment_{index}_min_rate", previous_max_rate)
+        )
         max_rate = float(params[f"{prefix}_segment_{index}_max_rate"])
+        # A non-zero first ``min_rate`` is the unit commitment threshold, not a
+        # missing conversion interval: the first incremental block still spans
+        # zero to its max rate. Later blocks must join exactly.
+        if index > 1 and abs(min_rate - previous_max_rate) > 1.0e-9:
+            raise ValueError(
+                f"{prefix} performance segments must be contiguous: "
+                f"segment {index} starts at {min_rate}, expected {previous_max_rate}"
+            )
+        if not 0.0 <= min_rate < max_rate <= 1.0:
+            raise ValueError(
+                f"{prefix} segment {index} must satisfy 0 <= min < max <= 1"
+            )
         kwh_per_kg = float(
             params.get(f"{prefix}_segment_{index}_kwh_per_kg", fallback_kwh_per_kg)
         )
-        width_rate = max(0.0, max_rate - previous_max_rate)
-        if width_rate > 0.0:
-            segments.append(
-                ConversionSegment(
-                    index=index,
-                    width_rate=width_rate,
-                    kwh_per_kg=kwh_per_kg,
-                )
+        if kwh_per_kg <= 0.0:
+            raise ValueError(f"{prefix} segment efficiency must be positive")
+        width_rate = max_rate - previous_max_rate
+        segments.append(
+            ConversionSegment(
+                index=index,
+                width_rate=width_rate,
+                kwh_per_kg=kwh_per_kg,
             )
-        previous_max_rate = max(previous_max_rate, max_rate)
+        )
+        previous_max_rate = max_rate
         index += 1
 
     if segments:
+        if abs(previous_max_rate - 1.0) > 1.0e-9:
+            raise ValueError(f"{prefix} performance segments must end at 1.0")
         return segments
 
     return [

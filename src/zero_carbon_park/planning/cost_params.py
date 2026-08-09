@@ -132,6 +132,8 @@ class PlanningCostParams:
     fuel_cell_backup_reserve_kw: float = 0.0
     fuel_cell_backup_required_kw: float = 0.0
     grid_export_limit_kw: float = 0.0
+    grid_import_limit_kw: float = 1.0e9
+    h2_external_supply_limit_kg_per_hour: float = 1.0e9
     # Legacy planning adapters keep the historic objective decomposition until
     # U5 routes them through GridTariff; the formal model uses the monthly field.
     demand_charge_cny_per_kw_year: float = 0.0

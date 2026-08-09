@@ -1,150 +1,56 @@
-# 零碳园区电-热-氢-储综合能源系统优化调度
+# 面向零碳工业园区的电—热—氢—储系统规划与韧性评估
 
-本项目基于鄂尔多斯零碳园区数据包，构建 24 小时日前 MILP 优化调度仿真模型，覆盖风电、光伏、电网、电池储能、电解槽、储氢罐、燃料电池、热泵、燃气锅炉和碳排放成本。
+本项目围绕能源央国企常见的“新能源规划—综合能源协同—全年运行校核—极端工况保供—能碳核算”工作链，构建园区级电、热、氢、储一体化规划模型。研究对象为公开园区尺度校准的合成算例，不是某个企业的 SCADA 实测项目，也不是交互式展示系统。
 
-## 运行方式
+## 项目主线
 
-在项目根目录执行：
+1. 以 2024 年闰年 8784 小时为统一时间边界，使用 ERA5 气象、公开园区用能尺度和区域政策参数重构输入。
+2. 对风光、电负荷、热负荷、氢负荷和电价进行标准化，选取 8/12/16 个真实代表日，强制保留峰荷、低风光等极端日期，并保存 366 天映射与跨期状态链接。
+3. 用同一套 Pyomo 物理约束求解经济型、低碳型和韧性型容量方案，覆盖风光、电池、电解槽、储氢、燃料电池、热泵和燃气锅炉。
+4. 固定规划容量，以 168 小时展望、24 小时提交的滚动窗口完成全年回放，传递电池 SOC 和储氢库存，检查逐时能量平衡、容量越限和正常年 ENS。
+5. 从全年回放的实际事前状态启动 2/4/8/24 小时孤网及设备故障事件，按关键、重要、可中断负荷顺序量化 ENS、关键负荷供能率、连续失供时长和孤网生存时间。
+6. 分开报告企业位置法碳排放与国家级零碳园区核算口径；图、表、报告和简历数字必须来自同一个冻结运行 ID。
 
-```powershell
-.\engrysystem-env\Scripts\python.exe -m zero_carbon_park.cli --workbook ".\鄂尔多斯零碳园区_电热氢储优化调度_数据包.xlsx" --output outputs
+## 工程边界
+
+- 电、热、氢三条母线逐时守恒；规划与回放共用约束，不为不同结果维护两套模型。
+- 电池与储氢禁止同一时段充放，设备考虑可用率、爬坡、最小负荷和分段性能。
+- 低碳型在等年值成本不超过经济型 110% 的约束下最小化运行碳排放，外送电不抵扣购电或燃气排放，且不允许通过失负荷“减碳”。
+- 韧性型按孤网、禁外购氢、关键负荷供能率和自备可用电源容量进行工程筛选；120% 保安负荷只作对标，不声称标准认证。
+- 没有故障概率数据时只报告确定性 ENS，不使用 EENS、LOLP、SAIDI 或 SAIFI 等概率指标名称。
+
+## 数据与复现
+
+正式运行只读取 `data/raw/` 与 `data/processed/` 中由运行清单显式声明并固定 SHA256 的文件，输出只写入 `artifacts/runs/<run_id>/`。程序不会按文件名自动寻找历史结果，也不会将旧缓存拼入新数据。
+
+数据来源、单位转换、适用期和工程假设见：
+
+- [数据方法说明](docs/data_methodology.md)
+- [字段级来源注册表](data/metadata/source_registry.csv)
+- [有界工程假设](data/metadata/assumptions.yaml)
+
+当前正式发布门仍关闭：本机尚未配置 Copernicus CDS/ERA5 凭据，因此没有冻结任何新的 8784 小时量化结论、图表或简历数字。该状态是为了避免旧 NASA 缓存或不可追溯替代数据污染结果。
+
+## 代码结构
+
+```text
+src/zero_carbon_park/
+├── data/             # 来源注册、ERA5管道、负荷重构与质量门
+├── typical_days/     # 真实代表日、366天映射、诊断与跨期链接
+├── planning/         # 统一物理模型和三类容量方案
+├── replay/           # 固定容量滚动全年回放
+├── reliability/      # 孤网与设备故障确定性压力测试
+├── reporting/        # 统一指标、静态图表和技术报告
+└── optimization/     # HiGHS求解与复现元数据
 ```
-
-运行后会生成：
-
-1. 标准化输入数据：`outputs/processed_inputs/`
-2. 场景结果表：`outputs/runs/first_version/`
-3. 结果图表：`outputs/figures/`
-4. 项目结论初稿：`outputs/docs/project_conclusions.md`
-
-## 模型结构
-
-当前模型支持 S0-S5：
-
-| 场景 | 含义 |
-|---|---|
-| S0 | 传统供能：电网购电 + 燃气锅炉 |
-| S1 | 新能源接入：风电 + 光伏 |
-| S2 | 新能源 + 电池储能 |
-| S3 | 新能源 + 电池储能 + 制氢储氢 |
-| S4 | 完整系统：加入热泵和燃料电池 |
-| S5 | 低碳调度：S4 基础上加入碳价成本 |
-
-## 技术栈
-
-1. Python
-2. pandas / numpy
-3. Pyomo
-4. HiGHS
-5. matplotlib
-6. openpyxl
-7. pytest
 
 ## 验证
 
-运行测试：
-
 ```powershell
-.\engrysystem-env\Scripts\python.exe -m pytest -q
+.\engrysystem-env\Scripts\python.exe -m pytest -q tests/test_representative_periods.py tests/test_planning_physics.py tests/test_engineering_portfolios.py
+.\engrysystem-env\Scripts\python.exe -m pytest -q tests/test_full_year_replay.py
+.\engrysystem-env\Scripts\python.exe -m pytest -q tests/test_reliability_events.py tests/test_reliability_metrics.py tests/test_engineering_comparison.py
+.\engrysystem-env\Scripts\python.exe -m pytest -q -m "not slow"
 ```
 
-## v2 多典型日与年化分析
-
-运行夏季、冬季、过渡季三个典型日 S5 调度：
-
-```powershell
-.\engrysystem-env\Scripts\python.exe -m zero_carbon_park.cli --workbook ".\鄂尔多斯零碳园区_电热氢储优化调度_数据包.xlsx" --output outputs --run-typical-days
-```
-
-运行多典型日加权年化分析：
-
-```powershell
-.\engrysystem-env\Scripts\python.exe -m zero_carbon_park.cli --workbook ".\鄂尔多斯零碳园区_电热氢储优化调度_数据包.xlsx" --output outputs --run-annualization
-```
-
-输出目录：
-
-1. 多典型日调度结果：`outputs/results/v2_typical_days/`
-2. 加权年化结果：`outputs/results/v2_annualized/`
-3. 容量规划优化结果：`outputs/results/v2_capacity_planning/`
-
-运行多典型日容量规划优化：
-
-```powershell
-.\engrysystem-env\Scripts\python.exe -m zero_carbon_park.cli --workbook ".\鄂尔多斯零碳园区_电热氢储优化调度_数据包.xlsx" --output outputs --run-capacity-planning
-```
-
-容量规划会在多典型日联合约束下，同时优化风电、光伏、电池、电解槽、储氢、燃料电池和热泵容量，并输出年化投资成本、年运行成本、年总成本、年碳排放和新能源消纳率。
-
-## v3 投资敏感性与 Pareto 分析
-
-运行设备投资参数敏感性分析：
-
-```powershell
-.\engrysystem-env\Scripts\python.exe -m zero_carbon_park.cli --workbook ".\鄂尔多斯零碳园区_电热氢储优化调度_数据包.xlsx" --output outputs --run-investment-sensitivity
-```
-
-该分析在容量规划模型基础上，分别调整风电、光伏、电池、电解槽、储氢、燃料电池和热泵投资成本，输出不同投资成本假设下的最优容量、年度成本、年度碳排放和新能源消纳率。
-
-运行成本-碳排放 Pareto 分析：
-
-```powershell
-.\engrysystem-env\Scripts\python.exe -m zero_carbon_park.cli --workbook ".\鄂尔多斯零碳园区_电热氢储优化调度_数据包.xlsx" --output outputs --run-pareto-analysis
-```
-
-该分析采用年度碳排放上限约束，生成不同减排目标下的年度总成本、设备容量配置和新能源消纳结果，用于研究低碳目标与系统成本之间的权衡关系。
-
-新增输出目录：
-
-1. 投资敏感性结果：`outputs/results/v3_investment_sensitivity/`
-2. 成本-碳排放 Pareto 结果：`outputs/results/v3_pareto_cost_carbon/`
-
-## v4 不确定性压力测试
-
-运行固定容量不确定性压力测试：
-
-```powershell
-.\engrysystem-env\Scripts\python.exe -m zero_carbon_park.cli --workbook ".\鄂尔多斯零碳园区_电热氢储优化调度_数据包.xlsx" --output outputs --run-uncertainty-stress-test
-```
-
-该分析先使用容量规划模型求得基准最优容量，然后固定该容量，在正常预测、光伏偏低、风电偏低、负荷偏高、氢负荷偏高和极端组合场景下重新运行调度，用于检查当前容量方案面对预测误差时的成本、碳排放、外部补氢和新能源消纳表现。
-
-输出目录：
-
-1. 不确定性压力测试结果：`outputs/results/v4_uncertainty_stress_test/`
-
-## v4.2 场景概率加权随机容量规划
-
-运行随机容量规划：
-
-```powershell
-.\engrysystem-env\Scripts\python.exe -m zero_carbon_park.cli --workbook ".\鄂尔多斯零碳园区_电热氢储优化调度_数据包.xlsx" --output outputs --run-stochastic-planning
-```
-
-该分析把夏季、冬季、过渡季三个典型日与正常预测、光伏偏低、风电偏低、负荷偏高、氢负荷偏高和极端组合六类不确定性场景组合为 18 个概率加权运行场景，在同一组容量决策下最小化期望年总成本。相比固定容量压力测试，随机容量规划会重新选择风电、光伏、电池、电解槽、储氢和热泵容量，使容量配置同时考虑正常工况与不利工况的概率影响。
-
-输出目录：
-
-1. 随机容量规划结果：`outputs/results/v4_stochastic_planning/`
-
-## v4.3 最坏情形鲁棒容量规划
-
-运行鲁棒容量规划：
-
-```powershell
-.\engrysystem-env\Scripts\python.exe -m zero_carbon_park.cli --workbook ".\鄂尔多斯零碳园区_电热氢储优化调度_数据包.xlsx" --output outputs --run-robust-planning
-```
-
-该分析同样使用三类典型日与六类不确定性场景，但不再按概率求期望成本，而是把每个不确定性场景都按 365 天年化，要求同一组容量配置在所有场景下可运行，并最小化六类场景中的最大年度总成本。该方法用于评估更保守的工程配置，重点控制风光偏低、负荷偏高或极端组合场景下的成本上界。
-
-输出目录：
-
-1. 鲁棒容量规划结果：`outputs/results/v4_robust_planning/`
-
-## 开发文档与二次开发
-
-为了方便开发者深入理解模型细节并进行二次开发，本项目提供了详尽的文档支持：
-
-1. **开发指南**：关于项目的系统架构、各模块职责分工、核心数据流向、如何扩展新设备或新场景，以及单元测试规范，请参见 [开发指南 (docs/development_guide.md)](docs/development_guide.md)。
-2. **数学模型与代码解析**：关于电-热-氢三大能量平衡、各核心设备约束、分段线性化（电解槽效率与电池老化）、碳核算与配额等公式的推导和逐行代码解析，请参见 [项目模型代码解析 (项目总结汇总/项目模型代码解析.md)](项目总结汇总/项目模型代码解析.md)。
-
+秋招项目叙事、岗位能力映射和待正式跑数的简历模板位于 [项目总结汇总](项目总结汇总/)；其中所有方括号量化字段必须由冻结结果自动替换后才能投递。

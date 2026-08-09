@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from pyomo.environ import ConcreteModel, Param, RangeSet, Set
+from pyomo.environ import ConcreteModel, Param, RangeSet, Set, value
 
 from zero_carbon_park.models.parameters import parameter_frame_to_dict
 from zero_carbon_park.models.performance_curves import (
@@ -38,6 +38,10 @@ def build_capacity_planning_model(
     initial_h2_inventory_kg: float | Mapping[str, float] | None = None,
     final_h2_inventory_kg: float | Mapping[str, float] | None = None,
     performance_curve_mode: str = "constant_efficiency",
+    objective_mode: str = "economic",
+    annual_total_cost_cap_cny: float | None = None,
+    critical_supply_min_ratio: float | None = None,
+    secure_capacity_multiplier: float | None = None,
 ) -> ConcreteModel:
     """Build the common capacity/dispatch model.
 
@@ -53,6 +57,14 @@ def build_capacity_planning_model(
         raise ValueError(
             "performance_curve_mode must be constant_efficiency or ordered_incremental"
         )
+    if objective_mode not in {"economic", "carbon"}:
+        raise ValueError("objective_mode must be economic or carbon")
+    if annual_total_cost_cap_cny is not None and annual_total_cost_cap_cny < 0.0:
+        raise ValueError("annual_total_cost_cap_cny cannot be negative")
+    if critical_supply_min_ratio is not None and not 0.0 <= critical_supply_min_ratio <= 1.0:
+        raise ValueError("critical_supply_min_ratio must be within [0, 1]")
+    if secure_capacity_multiplier is not None and secure_capacity_multiplier < 0.0:
+        raise ValueError("secure_capacity_multiplier cannot be negative")
 
     first_workbook = typical_days[0][1]
     device = parameter_frame_to_dict(first_workbook.device_params)
@@ -66,10 +78,30 @@ def build_capacity_planning_model(
     model.islanded = bool(islanded)
     model.allow_external_h2 = bool(not islanded if allow_external_h2 is None else allow_external_h2)
     model.performance_curve_mode = performance_curve_mode
+    model.objective_mode = objective_mode
     if islanded and model.allow_external_h2:
         raise ValueError("islanded operation cannot enable external hydrogen supply")
 
     _add_timeseries_params(model, typical_days, device, economic)
+    model.critical_supply_min_ratio = Param(
+        initialize=(
+            float(critical_supply_min_ratio)
+            if critical_supply_min_ratio is not None
+            else 0.0
+        )
+    )
+    model.secure_capacity_multiplier = Param(
+        initialize=(
+            float(secure_capacity_multiplier)
+            if secure_capacity_multiplier is not None
+            else 0.0
+        )
+    )
+    model.peak_critical_load_kw = Param(
+        initialize=max(
+            float(value(model.critical_load[d, t])) for d in model.D for t in model.T
+        )
+    )
     _add_device_params(model, device)
     _add_economic_params(model, economic)
     _add_investment_params(model, cost_params)
@@ -98,7 +130,11 @@ def build_capacity_planning_model(
     )
     add_operation_variables(model)
     add_planning_constraints(model)
-    add_capacity_planning_objective(model)
+    add_capacity_planning_objective(
+        model,
+        objective_mode=objective_mode,
+        annual_total_cost_cap_cny=annual_total_cost_cap_cny,
+    )
 
     return model
 

@@ -50,6 +50,21 @@ def add_planning_constraints(model: ConcreteModel) -> None:
         rule=lambda m, d, t: m.load_shed_interruptible[d, t]
         <= m.interruptible_load[d, t],
     )
+    model.critical_supply_requirement = Constraint(
+        model.D,
+        rule=lambda m, d: sum(
+            m.critical_load[d, t] - m.load_shed_critical[d, t] for t in m.T
+        )
+        >= m.critical_supply_min_ratio
+        * sum(m.critical_load[d, t] for t in m.T),
+    )
+    # Engineering screening benchmark: dispatchable self-owned electric power
+    # must cover the security load with the selected design margin. Renewable
+    # nameplate is intentionally excluded because it is not firm capacity.
+    model.secure_self_supply_capacity_constraint = Constraint(
+        rule=lambda m: m.battery_power_capacity_kw + m.fuel_cell_power_capacity_kw
+        >= m.secure_capacity_multiplier * m.peak_critical_load_kw
+    )
 
     def power_balance_rule(m, d, t):
         served_electric_load = (

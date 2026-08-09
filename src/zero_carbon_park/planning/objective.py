@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
-from pyomo.environ import ConcreteModel, Expression, Objective, minimize
+from pyomo.environ import ConcreteModel, Constraint, Expression, Objective, minimize
 
 
-def add_capacity_planning_objective(model: ConcreteModel) -> None:
+def add_capacity_planning_objective(
+    model: ConcreteModel,
+    *,
+    objective_mode: str = "economic",
+    annual_total_cost_cap_cny: float | None = None,
+) -> None:
     """添加年度运行成本和年化投资成本目标函数。"""
 
     def annual_operation_cost_rule(m):
@@ -60,12 +65,32 @@ def add_capacity_planning_objective(model: ConcreteModel) -> None:
         expr=model.fuel_cell_backup_capacity_kw
         * model.fuel_cell_backup_value_cny_per_kw_year
     )
-    model.annual_total_cost = Objective(
-        expr=(
-            model.annual_operation_cost
-            + model.annualized_investment_cost
-            + model.annual_demand_charge_cost
-            - model.annual_fuel_cell_backup_value
-        ),
-        sense=minimize,
+    model.annual_total_cost_expression = Expression(
+        expr=model.annual_operation_cost
+        + model.annualized_investment_cost
+        + model.annual_demand_charge_cost
+        - model.annual_fuel_cell_backup_value
     )
+    model.annual_operating_carbon_emission = Expression(
+        expr=sum(
+            model.weight_days[d] * model.carbon_emission[d, t]
+            for d in model.D
+            for t in model.T
+        )
+    )
+    model.annual_total_cost_cap_constraint = Constraint(
+        expr=(
+            model.annual_total_cost_expression <= float(annual_total_cost_cap_cny)
+            if annual_total_cost_cap_cny is not None
+            else Constraint.Feasible
+        )
+    )
+    if objective_mode == "economic":
+        objective_expression = model.annual_total_cost_expression
+    elif objective_mode == "carbon":
+        # Exports never appear in the carbon expression, so exported renewable
+        # energy cannot offset grid-import or fuel combustion emissions.
+        objective_expression = model.annual_operating_carbon_emission
+    else:
+        raise ValueError("objective_mode must be economic or carbon")
+    model.annual_total_cost = Objective(expr=objective_expression, sense=minimize)

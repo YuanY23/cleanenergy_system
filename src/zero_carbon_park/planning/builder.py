@@ -504,7 +504,13 @@ def _add_boundary_state_params(
             values = {day_id: float(raw[day_id]) for day_id in day_ids}
         else:
             values = {day_id: float(raw) for day_id in day_ids}
-        if any(selected < 0.0 for selected in values.values()):
-            raise ValueError(f"{name} cannot be negative")
+        materially_negative = [
+            selected for selected in values.values() if selected < -1.0e-6
+        ]
+        if materially_negative:
+            raise ValueError(
+                f"{name} cannot be negative: {min(materially_negative)}"
+            )
+        values = {day_id: max(0.0, selected) for day_id, selected in values.items()}
         setattr(model, name, Param(model.D, initialize=values))
         model._absolute_boundary_state[name] = absolute

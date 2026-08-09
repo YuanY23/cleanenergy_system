@@ -109,6 +109,26 @@ def test_fixed_capacity_mode_and_initial_final_state_interface():
     assert value(model.final_h2_inventory_kg["D"]) == 2.0
 
 
+def test_boundary_state_normalizes_solver_negative_zero_but_rejects_real_negative() -> None:
+    model = build_capacity_planning_model(
+        _case(),
+        PlanningCostParams(),
+        capacity_mode="fixed",
+        fixed_capacities=_fixed(),
+        initial_h2_inventory_kg=-1.0e-9,
+    )
+    assert value(model.initial_h2_inventory_kg["D"]) == 0.0
+
+    with pytest.raises(ValueError, match="initial_h2_inventory_kg.*-0.001"):
+        build_capacity_planning_model(
+            _case(),
+            PlanningCostParams(),
+            capacity_mode="fixed",
+            fixed_capacities=_fixed(),
+            initial_h2_inventory_kg=-1.0e-3,
+        )
+
+
 def test_grid_import_is_explicitly_limited_and_tiered_shedding_balances_load():
     model = build_capacity_planning_model(
         _case(

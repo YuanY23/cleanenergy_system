@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -14,6 +15,7 @@ from zero_carbon_park.reporting.plots import (
 )
 from zero_carbon_park.scenarios.runner import run_scenario
 from zero_carbon_park.typical_days.definitions import get_default_typical_days
+from zero_carbon_park.typical_days.definitions import RepresentativePeriodResult
 from zero_carbon_park.typical_days.generator import generate_typical_day_workbook
 
 
@@ -127,3 +129,53 @@ def _export_day_results(
         encoding="utf-8-sig",
     )
     hourly.to_excel(output_dir / "scenario_hourly_results.xlsx", index=False)
+
+
+def write_representative_period_artifacts(
+    result: RepresentativePeriodResult,
+    diagnostics: pd.DataFrame,
+    output_dir: str | Path,
+) -> dict[str, Path]:
+    """Write the complete clustering audit trail into one run-scoped folder."""
+
+    root = Path(output_dir)
+    root.mkdir(parents=True, exist_ok=True)
+    paths = {
+        "representative_days": root / "representative_days.csv",
+        "representative_hourly": root / "representative_hourly.csv",
+        "day_mapping": root / "day_mapping.csv",
+        "transition_counts": root / "transition_counts.csv",
+        "chronology_links": root / "chronology_links.csv",
+        "normalization": root / "normalization.csv",
+        "diagnostics": root / "compression_diagnostics.csv",
+        "metadata": root / "representative_period_metadata.json",
+    }
+    result.representative_days.to_csv(
+        paths["representative_days"], index=False, encoding="utf-8-sig"
+    )
+    result.representative_hourly.to_csv(
+        paths["representative_hourly"], index=False, encoding="utf-8-sig"
+    )
+    result.day_mapping.to_csv(paths["day_mapping"], index=False, encoding="utf-8-sig")
+    result.transition_counts.to_csv(paths["transition_counts"], encoding="utf-8-sig")
+    result.chronology_links.to_csv(
+        paths["chronology_links"], index=False, encoding="utf-8-sig"
+    )
+    result.normalization.to_csv(
+        paths["normalization"], index=False, encoding="utf-8-sig"
+    )
+    diagnostics.to_csv(paths["diagnostics"], index=False, encoding="utf-8-sig")
+    metadata = {
+        "method": "deterministic_fixed-extreme_k-medoids",
+        "k": result.k,
+        "seed": result.seed,
+        "feature_columns": list(result.feature_columns),
+        "weight_days_total": int(result.representative_days["weight_days"].sum()),
+        "chronology_link_count": len(result.chronology_links),
+        "extreme_days": result.extreme_days,
+    }
+    paths["metadata"].write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+    return paths

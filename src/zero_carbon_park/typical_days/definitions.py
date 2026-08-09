@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import pandas as pd
+
 
 @dataclass(frozen=True)
 class TypicalDayConfig:
@@ -27,6 +29,46 @@ class TypicalDayConfig:
     gas_price_scale: float
     grid_emission_scale: float
     carbon_price_scale: float
+
+
+@dataclass(frozen=True)
+class RepresentativePeriodConfig:
+    """Configuration for deterministic, real-day representative periods."""
+
+    k: int = 12
+    seed: int = 20240809
+    timestamp_column: str = "timestamp_local"
+    feature_columns: tuple[str, ...] | None = None
+    max_iterations: int = 50
+    include_year_wrap: bool = True
+
+    def __post_init__(self) -> None:
+        if self.k not in {8, 12, 16}:
+            raise ValueError("k must be 8, 12 or 16")
+        if self.max_iterations < 1:
+            raise ValueError("max_iterations must be positive")
+
+
+@dataclass(frozen=True)
+class RepresentativePeriodResult:
+    """Auditable compression output and occurrence-level chronology interface.
+
+    ``chronology_links`` deliberately retains one row per calendar-day state
+    transition.  A planning model can therefore link storage end/start states
+    in the original 366-day order instead of imposing independent daily loops.
+    ``transition_counts`` is the corresponding compact aggregate.
+    """
+
+    representative_days: pd.DataFrame
+    representative_hourly: pd.DataFrame
+    day_mapping: pd.DataFrame
+    transition_counts: pd.DataFrame
+    chronology_links: pd.DataFrame
+    normalization: pd.DataFrame
+    extreme_days: dict[str, object]
+    feature_columns: tuple[str, ...]
+    seed: int
+    k: int
 
 
 def get_default_typical_days() -> list[TypicalDayConfig]:
@@ -76,4 +118,3 @@ def get_default_typical_days() -> list[TypicalDayConfig]:
             carbon_price_scale=1.00,
         ),
     ]
-

@@ -48,10 +48,17 @@ def build_engineering_comparison(
         "planning summary",
     )
     _require_columns(replay_hourly, {"portfolio_id", "grid_buy_kw"}, "replay")
+    replay_with_carbon = add_hourly_carbon_metrics(
+        replay_hourly,
+        carbon_factors=carbon_factors,
+        natural_gas_factor_kgco2_per_m3=natural_gas_factor_kgco2_per_m3,
+    )
     rows: list[dict[str, object]] = []
     for _, planning in planning_summary.iterrows():
         portfolio_id = str(planning["portfolio_id"])
-        replay = replay_hourly.loc[replay_hourly["portfolio_id"] == portfolio_id]
+        replay = replay_with_carbon.loc[
+            replay_with_carbon["portfolio_id"] == portfolio_id
+        ]
         if replay.empty:
             raise MetricConsistencyError(f"missing replay for {portfolio_id}")
         expected_cost = (
@@ -143,27 +150,76 @@ def build_engineering_comparison(
     return {
         "comparison": comparison,
         "definitions": _metric_definitions(),
+        "replay_with_carbon": replay_with_carbon,
     }
+
+
+def add_hourly_carbon_metrics(
+    replay_hourly: pd.DataFrame,
+    *,
+    carbon_factors: CarbonFactors,
+    natural_gas_factor_kgco2_per_m3: float,
+) -> pd.DataFrame:
+    """Attach the two non-interchangeable hourly carbon-accounting columns."""
+
+    if natural_gas_factor_kgco2_per_m3 < 0:
+        raise ValueError("natural gas emission factor cannot be negative")
+    _require_columns(replay_hourly, {"portfolio_id", "grid_buy_kw"}, "replay")
+    result = replay_hourly.copy()
+    grid_buy = pd.to_numeric(result["grid_buy_kw"], errors="raise").clip(lower=0.0)
+    gas = (
+        pd.to_numeric(result["gas_consumption_m3"], errors="raise").clip(lower=0.0)
+        if "gas_consumption_m3" in result
+        else pd.Series(0.0, index=result.index)
+    )
+    eligible = (
+        pd.to_numeric(result["eligible_green_grid_kwh"], errors="raise")
+        .clip(lower=0.0)
+        .where(lambda values: values <= grid_buy, grid_buy)
+        if "eligible_green_grid_kwh" in result
+        else pd.Series(0.0, index=result.index)
+    )
+    offsets = (
+        pd.to_numeric(result["verified_offset_kgco2"], errors="raise").clip(lower=0.0)
+        if "verified_offset_kgco2" in result
+        else pd.Series(0.0, index=result.index)
+    )
+    direct = gas * natural_gas_factor_kgco2_per_m3
+    result["location_carbon_kgco2"] = (
+        direct + grid_buy * carbon_factors.location_based_kg_per_kwh
+    )
+    result["zero_carbon_kgco2"] = (
+        direct
+        + (grid_buy - eligible).clip(lower=0.0)
+        * carbon_factors.zero_carbon_method_kg_per_kwh
+        - offsets
+    )
+    return result
 
 
 def _reliability_metrics(
     reliability_summary: pd.DataFrame, portfolio_id: str
 ) -> dict[str, float | int]:
-    defaults: dict[str, float | int] = {
-        "design_event_ens_kwh": 0.0,
-        "design_event_critical_ens_kwh": 0.0,
-        "critical_load_supply_ratio": 1.0,
-        "design_event_loss_of_load_hours": 0,
-        "maximum_consecutive_loss_hours": 0,
-        "minimum_island_survival_hours": 0,
-    }
-    if reliability_summary.empty or "portfolio_id" not in reliability_summary:
-        return defaults
+    _require_columns(
+        reliability_summary,
+        {
+            "portfolio_id",
+            "ens_total_kwh",
+            "ens_critical_kwh",
+            "critical_load_supply_ratio",
+            "loss_of_load_hours",
+            "max_consecutive_loss_hours",
+            "island_survival_hours",
+        },
+        "reliability summary",
+    )
     selected = reliability_summary.loc[
         reliability_summary["portfolio_id"] == portfolio_id
     ]
     if selected.empty:
-        return defaults
+        raise MetricConsistencyError(
+            f"missing reliability results for {portfolio_id}"
+        )
     return {
         "design_event_ens_kwh": float(selected["ens_total_kwh"].max()),
         "design_event_critical_ens_kwh": float(selected["ens_critical_kwh"].max()),
@@ -253,5 +309,6 @@ def _require_columns(frame: pd.DataFrame, columns: set[str], label: str) -> None
 __all__ = [
     "FORMULA_VERSION",
     "MetricConsistencyError",
+    "add_hourly_carbon_metrics",
     "build_engineering_comparison",
 ]

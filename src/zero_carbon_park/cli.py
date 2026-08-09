@@ -13,6 +13,7 @@ from zero_carbon_park.config import (
     load_verified_manifest,
 )
 from zero_carbon_park.data.loader import export_processed_inputs, load_input_workbook
+from zero_carbon_park.data.sources import SourceRegistry
 from zero_carbon_park.planning.pareto import run_cost_carbon_pareto_analysis
 from zero_carbon_park.planning.runner import run_capacity_planning
 from zero_carbon_park.planning.sensitivity import run_investment_sensitivity_analysis
@@ -38,7 +39,11 @@ DEFAULT_SCENARIOS = ["S0", "S1", "S2", "S3", "S4", "S5"]
 
 
 def resolve_declared_workbook(
-    manifest_path: str | Path, *, repo_root: str | Path
+    manifest_path: str | Path,
+    *,
+    repo_root: str | Path,
+    source_registry: SourceRegistry | None = None,
+    verify_git_revision: bool = True,
 ) -> tuple[VerifiedRunManifest, Path]:
     """Resolve the legacy model workbook through a verified formal-run manifest.
 
@@ -47,7 +52,12 @@ def resolve_declared_workbook(
     repository for similarly named workbooks.
     """
 
-    verified = load_verified_manifest(manifest_path, repo_root=repo_root)
+    verified = load_verified_manifest(
+        manifest_path,
+        repo_root=repo_root,
+        source_registry=source_registry,
+        verify_git_revision=verify_git_revision,
+    )
     try:
         workbook_path = verified.input_paths["model_workbook"]
     except KeyError as exc:
@@ -133,7 +143,7 @@ def main() -> None:
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument(
         "--manifest",
-        help="正式运行清单路径；输入将先校验来源ID和SHA256。",
+        help="验证正式运行清单；不会调用兼容期的 S0-S5/典型日旧流程。",
     )
     input_group.add_argument(
         "--workbook",
@@ -192,17 +202,42 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.manifest:
-        verified_manifest, workbook_path = resolve_declared_workbook(
+        legacy_actions = {
+            name
+            for name in (
+                "run_typical_days",
+                "run_annualization",
+                "run_capacity_planning",
+                "run_investment_sensitivity",
+                "run_pareto_analysis",
+                "run_uncertainty_stress_test",
+                "run_stochastic_planning",
+                "run_robust_planning",
+            )
+            if getattr(args, name)
+        }
+        if args.output is not None:
+            raise ManifestValidationError(
+                "formal manifest mode fixes output to its immutable run directory; "
+                "--output is not allowed"
+            )
+        if legacy_actions:
+            raise ManifestValidationError(
+                "formal manifest mode cannot invoke legacy analysis actions: "
+                + ", ".join(sorted(legacy_actions))
+            )
+        verified_manifest = load_verified_manifest(
             args.manifest, repo_root=args.repo_root
         )
-        output_root = Path(args.output) if args.output else verified_manifest.manifest_path.parent
         print(f"verified_run_id: {verified_manifest.run_id}")
         for excluded_path in verified_manifest.excluded_history_paths:
             print(f"excluded_history: {excluded_path}")
-    else:
-        workbook_path = Path(args.workbook)
-        output_root = Path(args.output or "outputs")
-        print("legacy_input_mode: results are not eligible for the formal baseline")
+        print("formal_manifest_status: verified; no legacy model was executed")
+        return
+
+    workbook_path = Path(args.workbook)
+    output_root = Path(args.output or "outputs")
+    print("legacy_input_mode: results are not eligible for the formal baseline")
 
     if args.run_robust_planning:
         outputs = run_robust_capacity_planning(workbook_path, output_root)

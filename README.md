@@ -23,6 +23,8 @@
 
 正式运行只读取 `data/raw/` 与 `data/processed/` 中由运行清单显式声明并固定 SHA256 的文件，输出只写入 `artifacts/runs/<run_id>/`。程序不会按文件名自动寻找历史结果，也不会将旧缓存拼入新数据。
 
+正式清单校验还会同时检查字段级来源注册表、原文件哈希、当前 Git 版本以及 `src/`、`scripts/` 和 `data/metadata/` 的受控状态。`--manifest` 入口仅执行这套发布前校验，并明确禁止 `--output` 和所有 S0—S5/旧典型日动作；兼容期 `--workbook` 结果始终标记为非正式基准。
+
 数据来源、单位转换、适用期和工程假设见：
 
 - [数据方法说明](docs/data_methodology.md)

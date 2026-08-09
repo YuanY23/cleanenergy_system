@@ -56,7 +56,12 @@ def generate_static_engineering_outputs(
     _validate_inputs(inputs, run_id)
     run_dir = Path(output_root).resolve() / run_id
     report_dir = run_dir / "reporting"
-    report_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        report_dir.mkdir(parents=True, exist_ok=False)
+    except FileExistsError as exc:
+        raise ValueError(
+            f"reporting output already exists and is immutable: {report_dir}"
+        ) from exc
     source_note = f"数据来源：仅使用本次运行显式输入；run_id={run_id}；口径详见技术报告。"
 
     outputs: dict[str, Path] = {

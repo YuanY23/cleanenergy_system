@@ -21,7 +21,7 @@ class ReplayResult:
     windows: pd.DataFrame
     initial_state: ReplayState
     final_state: ReplayState
-    quality_report: dict[str, float | int | str]
+    quality_report: dict[str, float | int | str | bool]
     publication_eligible: bool
     suggested_extreme_dates: tuple[str, ...]
 

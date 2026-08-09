@@ -87,7 +87,9 @@ def test_rolling_replay_commits_each_hour_once_and_passes_state() -> None:
         _workbook(72),
         fixed_capacities=_fixed(),
         cost_params=PlanningCostParams(grid_import_limit_kw=10.0),
-        config=ReplayConfig(lookahead_hours=48, commit_hours=24),
+        config=ReplayConfig(
+            lookahead_hours=48, commit_hours=24, formal_validation=False
+        ),
         initial_state=ReplayState(0.0, 0.0),
     )
 
@@ -100,7 +102,8 @@ def test_rolling_replay_commits_each_hour_once_and_passes_state() -> None:
     )
     assert result.final_state == ReplayState(0.0, 0.0)
     assert bool(result.windows.iloc[-1]["annual_cycle_target_applied"])
-    assert result.publication_eligible
+    assert not result.publication_eligible
+    assert result.quality_report["formal_time_axis_valid"] is False
     assert result.quality_report["ens_total_kwh"] == pytest.approx(0.0)
 
 
@@ -109,7 +112,9 @@ def test_last_window_can_be_shorter_than_lookahead_without_duplicates() -> None:
         _workbook(50),
         fixed_capacities=_fixed(),
         cost_params=PlanningCostParams(grid_import_limit_kw=10.0),
-        config=ReplayConfig(lookahead_hours=48, commit_hours=24),
+        config=ReplayConfig(
+            lookahead_hours=48, commit_hours=24, formal_validation=False
+        ),
         initial_state=ReplayState(0.0, 0.0),
     )
     assert len(result.hourly) == 50
@@ -122,7 +127,9 @@ def test_normal_year_ens_is_explicit_and_blocks_publication() -> None:
         _workbook(48, grid_limited_case=True),
         fixed_capacities=_fixed(),
         cost_params=PlanningCostParams(grid_import_limit_kw=2.0),
-        config=ReplayConfig(lookahead_hours=48, commit_hours=24),
+        config=ReplayConfig(
+            lookahead_hours=48, commit_hours=24, formal_validation=False
+        ),
         initial_state=ReplayState(0.0, 0.0),
     )
     assert result.quality_report["ens_total_kwh"] > 0.0
@@ -136,7 +143,20 @@ def test_failed_window_is_not_returned_as_a_valid_replay() -> None:
             _workbook(48),
             fixed_capacities=_fixed(),
             cost_params=PlanningCostParams(grid_import_limit_kw=10.0),
-            config=ReplayConfig(lookahead_hours=48, commit_hours=24),
+            config=ReplayConfig(
+                lookahead_hours=48, commit_hours=24, formal_validation=False
+            ),
             initial_state=ReplayState(0.0, 0.0),
             solve=lambda model, **kwargs: "time_limit",
+        )
+
+
+def test_formal_replay_rejects_incomplete_2024_time_axis_before_solving() -> None:
+    with pytest.raises(ValueError, match="8784|formal replay"):
+        run_rolling_replay(
+            _workbook(48),
+            fixed_capacities=_fixed(),
+            cost_params=PlanningCostParams(grid_import_limit_kw=10.0),
+            config=ReplayConfig(lookahead_hours=48, commit_hours=24),
+            initial_state=ReplayState(0.0, 0.0),
         )

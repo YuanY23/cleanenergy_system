@@ -192,6 +192,38 @@ class SourceRegistry:
                 f"formal run requires verified dates and downloaded file hashes: {joined}"
             )
 
+    def validate_manifest_input(self, source_id: str, file_sha256: str) -> None:
+        """Bind one declared input to a verified registry artifact.
+
+        A source may appear on several field-level rows, but every row for that
+        source must describe the same downloaded artifact.  This prevents a
+        manifest from using a plausible-looking but unknown source identifier
+        or from attaching a verified source ID to a different file.
+        """
+
+        candidates = [record for record in self.records if record.source_id == source_id]
+        if not candidates:
+            raise SourceRegistryValidationError(
+                f"manifest references unknown source_id: {source_id}"
+            )
+        unresolved = [
+            record
+            for record in candidates
+            if record.verification_status != "verified"
+            or record.file_sha256 == PENDING_DOWNLOAD
+            or PENDING_VERIFICATION
+            in {record.published_at, record.applicable_from, record.applicable_to}
+        ]
+        if unresolved:
+            raise SourceRegistryValidationError(
+                f"manifest source_id is not verified for formal use: {source_id}"
+            )
+        registered_hashes = {record.file_sha256 for record in candidates}
+        if registered_hashes != {file_sha256}:
+            raise SourceRegistryValidationError(
+                f"manifest file hash does not match source registry for {source_id}"
+            )
+
     def validate_assumption_sources(
         self, assumptions: Iterable[AssumptionRecord]
     ) -> None:

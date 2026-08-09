@@ -48,6 +48,8 @@ def default_outage_durations() -> tuple[int, ...]:
 def select_stress_start_times(
     annual_inputs: pd.DataFrame,
     replay_hourly: pd.DataFrame,
+    *,
+    max_duration_hours: int = max(SUPPORTED_DURATIONS),
 ) -> pd.DataFrame:
     """Select auditable outage starts from annual loads, weather and actual states."""
 
@@ -63,6 +65,19 @@ def select_stress_start_times(
     )
     if merged.empty or merged["timestamp_local"].isna().any():
         raise ValueError("annual inputs and replay states must share valid timestamps")
+    if max_duration_hours <= 0:
+        raise ValueError("max_duration_hours must be positive")
+    first_state = states["timestamp_local"].min()
+    final_input = inputs["timestamp_local"].max()
+    latest_start = final_input - pd.Timedelta(hours=max_duration_hours - 1)
+    merged = merged.loc[
+        (merged["timestamp_local"] > first_state)
+        & (merged["timestamp_local"] <= latest_start)
+    ].copy()
+    if merged.empty:
+        raise ValueError(
+            "annual replay does not leave a pre-event state and complete outage horizon"
+        )
     pv = "pv_cf" if "pv_cf" in merged else "pv_available_kw"
     wind = "wind_cf_calibrated" if "wind_cf_calibrated" in merged else (
         "wind_cf" if "wind_cf" in merged else "wind_available_kw"

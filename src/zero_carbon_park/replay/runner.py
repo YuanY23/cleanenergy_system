@@ -33,6 +33,10 @@ class ReplayConfig:
     ens_tolerance_kwh: float = 1e-6
     balance_tolerance_kw: float = 1e-5
     enforce_annual_cycle: bool = True
+    formal_validation: bool = True
+    study_year: int = 2024
+    expected_hours: int = 8_784
+    local_timezone: str = "Asia/Shanghai"
 
     def __post_init__(self) -> None:
         if self.commit_hours <= 0 or self.lookahead_hours < self.commit_hours:
@@ -41,6 +45,8 @@ class ReplayConfig:
             raise ValueError("solver_time_limit_seconds must be positive")
         if not 0 <= self.solver_mip_gap < 1:
             raise ValueError("solver_mip_gap must be within [0, 1)")
+        if self.expected_hours <= 0:
+            raise ValueError("expected_hours must be positive")
 
 
 def run_rolling_replay(
@@ -72,6 +78,12 @@ def run_rolling_replay(
         pd.Timedelta(hours=1)
     ).all():
         raise ValueError("timestamp_local must be continuous hourly data")
+    formal_time_axis_valid = _is_formal_time_axis(timestamps, selected)
+    if selected.formal_validation and not formal_time_axis_valid:
+        raise ValueError(
+            f"formal replay requires the complete {selected.study_year} local-time "
+            f"axis with {selected.expected_hours} hourly rows in {selected.local_timezone}"
+        )
 
     state = initial_state or ReplayState(
         0.5 * float(fixed_capacities["battery_energy_capacity_kwh"]),
@@ -171,10 +183,14 @@ def run_rolling_replay(
     windows = pd.DataFrame(window_rows)
     report, eligible, extreme_dates = evaluate_replay_quality(
         hourly,
-        expected_hours=len(timeseries),
+        expected_hours=(
+            selected.expected_hours if selected.formal_validation else len(timeseries)
+        ),
         ens_tolerance_kwh=selected.ens_tolerance_kwh,
         balance_tolerance_kw=selected.balance_tolerance_kw,
     )
+    report["formal_time_axis_valid"] = formal_time_axis_valid
+    eligible = eligible and selected.formal_validation and formal_time_axis_valid
     return ReplayResult(
         hourly=hourly,
         windows=windows,
@@ -193,6 +209,21 @@ def _slice_workbook(workbook: InputWorkbook, start: int, stop: int) -> InputWork
         economic_params=workbook.economic_params.copy(deep=True),
         scenarios=workbook.scenarios.copy(deep=True),
     )
+
+
+def _is_formal_time_axis(timestamps: pd.Series, config: ReplayConfig) -> bool:
+    if len(timestamps) != config.expected_hours:
+        return False
+    actual = pd.DatetimeIndex(timestamps)
+    if actual.tz is None or str(actual.tz) != config.local_timezone:
+        return False
+    expected = pd.date_range(
+        f"{config.study_year}-01-01 00:00:00",
+        periods=config.expected_hours,
+        freq="h",
+        tz=config.local_timezone,
+    )
+    return actual.equals(expected)
 
 
 __all__ = [

@@ -24,6 +24,7 @@ def build_workbook(
     output_xlsx: str | Path,
     node_executable: str | Path,
     node_modules: str | Path,
+    timeout_seconds: float = 300.0,
 ) -> Path:
     annual = Path(annual_csv).resolve()
     sources = Path(source_registry_csv).resolve()
@@ -44,6 +45,8 @@ def build_workbook(
     node = Path(node_executable).resolve()
     if not node.is_file():
         raise RuntimeError("the provided Node.js executable is missing")
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive")
 
     with tempfile.TemporaryDirectory(prefix="zero-carbon-workbook-") as temp_name:
         temp_dir = Path(temp_name)
@@ -62,6 +65,7 @@ def build_workbook(
             ],
             cwd=temp_dir,
             check=True,
+            timeout=timeout_seconds,
         )
     return output
 

@@ -73,8 +73,8 @@ def solve_engineering_portfolios(
     low_carbon_cost_ratio: float = 1.10,
     critical_supply_min_ratio: float = 0.99,
     secure_capacity_multiplier: float = 1.20,
-    time_limit_seconds: float | None = None,
-    mip_gap: float | None = None,
+    time_limit_seconds: float | None = 3_600.0,
+    mip_gap: float | None = 0.01,
 ) -> dict[str, pd.DataFrame]:
     """Solve three auditable capacity portfolios from one representative-day input.
 

@@ -5,8 +5,14 @@ import pytest
 
 from zero_carbon_park.data.loader import InputWorkbook
 from zero_carbon_park.planning.cost_params import PlanningCostParams
-from zero_carbon_park.reliability.definitions import ReliabilityEvent
-from zero_carbon_park.reliability.runner import run_reliability_event
+from zero_carbon_park.reliability.definitions import (
+    ReliabilityEvent,
+    select_stress_start_times,
+)
+from zero_carbon_park.reliability.runner import (
+    run_reliability_catalog,
+    run_reliability_event,
+)
 
 
 def _params(values: dict[str, float]) -> pd.DataFrame:
@@ -127,3 +133,50 @@ def test_device_fault_derates_the_named_device_for_the_event() -> None:
     )
     assert result.hourly["battery_discharge_kw"].sum() == pytest.approx(0.0)
     assert result.summary["ens_critical_kwh"] == pytest.approx(4.0)
+
+
+def test_stress_selector_keeps_pre_state_and_complete_24h_horizon() -> None:
+    timestamps = pd.date_range(
+        "2024-01-01", periods=72, freq="h", tz="Asia/Shanghai"
+    )
+    annual = pd.DataFrame(
+        {
+            "timestamp_local": timestamps,
+            "electric_load_kw": [1000.0] + [1.0] * 70 + [2000.0],
+            "pv_cf": [0.0] * 72,
+            "wind_cf": [0.0] * 72,
+        }
+    )
+    replay = pd.DataFrame(
+        {
+            "timestamp_local": timestamps,
+            "battery_soc_kwh": [0.0] + [10.0] * 71,
+            "h2_storage_kg": [0.0] + [10.0] * 71,
+        }
+    )
+
+    starts = select_stress_start_times(annual, replay)
+
+    assert (starts["start_timestamp"] > timestamps[0]).all()
+    assert (starts["start_timestamp"] <= timestamps[-24]).all()
+
+
+def test_catalog_runner_keeps_portfolio_and_event_lineage() -> None:
+    start = pd.Timestamp("2024-01-01 00:00", tz="Asia/Shanghai")
+    events = (
+        ReliabilityEvent("OUTAGE_2H", start, 2),
+        ReliabilityEvent("OUTAGE_4H", start, 4),
+    )
+
+    result = run_reliability_catalog(
+        _workbook(),
+        replay_hourly=_replay_state(),
+        fixed_capacities=_fixed(),
+        cost_params=PlanningCostParams(grid_import_limit_kw=100.0),
+        events=events,
+        portfolio_id="resilience",
+    )
+
+    assert set(result["summary"]["event_id"]) == {"OUTAGE_2H", "OUTAGE_4H"}
+    assert result["summary"]["portfolio_id"].eq("resilience").all()
+    assert set(result["hourly"]["event_id"]) == {"OUTAGE_2H", "OUTAGE_4H"}

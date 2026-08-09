@@ -350,7 +350,7 @@ def build_annual_weather(
     else:
         raw_frame = era5_fetcher(config, credentials)
         raw_file = raw_path / f"era5_ordos_{config.year}_utc.csv"
-        raw_frame.to_csv(raw_file, index=False, encoding="utf-8")
+        _atomic_to_csv(raw_frame, raw_file)
 
     annual = transform_era5_hourly(
         raw_frame, config, pv_converter=pv_converter
@@ -362,11 +362,11 @@ def build_annual_weather(
     processed_file = processed_path / f"weather_ordos_{config.year}_8784.csv"
     quality_json = processed_path / f"weather_ordos_{config.year}_quality.json"
     quality_csv = processed_path / f"weather_ordos_{config.year}_quality.csv"
-    annual.to_csv(processed_file, index=False, encoding="utf-8")
-    quality_json.write_text(
-        json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    _atomic_to_csv(annual, processed_file)
+    _atomic_write_text(
+        quality_json, json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     )
-    pd.DataFrame([report]).to_csv(quality_csv, index=False, encoding="utf-8")
+    _atomic_to_csv(pd.DataFrame([report]), quality_csv)
     return {
         "raw": raw_file,
         "processed": processed_file,
@@ -424,7 +424,14 @@ def download_era5_hourly(
         ],
     }
     target = Path(target_path)
-    client.retrieve(ERA5_DATASET, request, str(target))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_name(f".{target.name}.part")
+    if temporary.exists():
+        raise FileExistsError(f"incomplete ERA5 download already exists: {temporary}")
+    client.retrieve(ERA5_DATASET, request, str(temporary))
+    if not temporary.is_file() or temporary.stat().st_size == 0:
+        raise AnnualWeatherQualityError("ERA5 download did not create a non-empty file")
+    temporary.replace(target)
     return target
 
 
@@ -638,3 +645,19 @@ def _pvlib_capacity_factor(
 
 def _is_leap_year(year: int) -> bool:
     return calendar.isleap(year)
+
+
+def _atomic_to_csv(frame: pd.DataFrame, target: Path) -> None:
+    temporary = target.with_name(f".{target.name}.tmp")
+    if temporary.exists():
+        raise FileExistsError(f"incomplete output already exists: {temporary}")
+    frame.to_csv(temporary, index=False, encoding="utf-8")
+    temporary.replace(target)
+
+
+def _atomic_write_text(target: Path, content: str) -> None:
+    temporary = target.with_name(f".{target.name}.tmp")
+    if temporary.exists():
+        raise FileExistsError(f"incomplete output already exists: {temporary}")
+    temporary.write_text(content, encoding="utf-8")
+    temporary.replace(target)

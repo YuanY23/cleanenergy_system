@@ -201,3 +201,17 @@ def test_capacity_and_cost_panels_keep_the_same_portfolio_order(
     expected = ["经济型", "低碳型", "韧性型"]
     assert captured_orders == [expected, expected]
     assert output.is_file()
+
+
+def test_static_bundle_never_overwrites_an_existing_run_report(tmp_path: Path) -> None:
+    inputs = _inputs()
+    inputs.source_notes.loc[
+        inputs.source_notes["category"] == "模型结果", "source"
+    ] = "immutable-run"
+    generate_static_engineering_outputs(
+        output_root=tmp_path, run_id="immutable-run", inputs=inputs
+    )
+    with pytest.raises(ValueError, match="already exists|immutable"):
+        generate_static_engineering_outputs(
+            output_root=tmp_path, run_id="immutable-run", inputs=inputs
+        )

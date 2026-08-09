@@ -16,6 +16,12 @@ import re
 import subprocess
 from typing import Iterable, Mapping
 
+from zero_carbon_park.data.sources import (
+    SourceRegistry,
+    SourceRegistryValidationError,
+    load_source_registry,
+)
+
 
 MANIFEST_SCHEMA_VERSION = 1
 _RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -196,7 +202,11 @@ def build_run_manifest(
 
 
 def load_verified_manifest(
-    manifest_path: str | Path, *, repo_root: str | Path
+    manifest_path: str | Path,
+    *,
+    repo_root: str | Path,
+    source_registry: SourceRegistry | None = None,
+    verify_git_revision: bool = True,
 ) -> VerifiedRunManifest:
     """Load a manifest and reject undeclared locations, missing provenance or drift."""
 
@@ -217,6 +227,11 @@ def load_verified_manifest(
     if not isinstance(source_items, list) or not source_items:
         raise ManifestValidationError("manifest inputs must be a non-empty list")
 
+    registry = source_registry or _load_default_source_registry(root_paths.repo_root)
+    try:
+        registry.validate_for_formal_run()
+    except SourceRegistryValidationError as exc:
+        raise ManifestValidationError(f"formal source registry is unresolved: {exc}") from exc
     logical_names: set[str] = set()
     resolved_paths: set[Path] = set()
     verified_paths: dict[str, Path] = {}
@@ -225,7 +240,6 @@ def load_verified_manifest(
             raise ManifestValidationError("each manifest input must be an object")
         logical_name = _required_text(item, "logical_name")
         source_id = _required_text(item, "source_id")
-        del source_id  # Presence is the provenance gate; U2 resolves the registry entry.
         relative_path = _required_text(item, "path")
         expected_hash = _required_text(item, "sha256").lower()
         if not _SHA256_PATTERN.fullmatch(expected_hash):
@@ -246,11 +260,19 @@ def load_verified_manifest(
                 f"SHA256 mismatch for {logical_name!r}: expected {expected_hash}, "
                 f"got {actual_hash}"
             )
+        try:
+            registry.validate_manifest_input(source_id, expected_hash)
+        except SourceRegistryValidationError as exc:
+            raise ManifestValidationError(
+                f"source provenance failed for {logical_name!r}: {exc}"
+            ) from exc
         logical_names.add(logical_name)
         resolved_paths.add(input_path)
         verified_paths[logical_name] = input_path
 
     git_commit = _required_text(payload, "git_commit")
+    if verify_git_revision:
+        _validate_git_revision(root_paths.repo_root, git_commit)
     study_year = payload.get("study_year")
     if not isinstance(study_year, int):
         raise ManifestValidationError("study_year must be an integer")
@@ -347,6 +369,48 @@ def _read_git_commit(repo_root: Path) -> str:
             "git_commit could not be determined; pass it explicitly for a non-git fixture"
         ) from exc
     return completed.stdout.strip()
+
+
+def _load_default_source_registry(repo_root: Path) -> SourceRegistry:
+    registry_path = repo_root / "data" / "metadata" / "source_registry.csv"
+    try:
+        return load_source_registry(registry_path)
+    except SourceRegistryValidationError as exc:
+        raise ManifestValidationError(
+            f"formal source registry is unavailable or invalid: {registry_path}"
+        ) from exc
+
+
+def _validate_git_revision(repo_root: Path, expected_commit: str) -> None:
+    actual_commit = _read_git_commit(repo_root)
+    if actual_commit != expected_commit:
+        raise ManifestValidationError(
+            f"git revision drift: manifest pins {expected_commit}, executing {actual_commit}"
+        )
+    try:
+        completed = subprocess.run(
+            [
+                "git",
+                "status",
+                "--porcelain",
+                "--untracked-files=no",
+                "--",
+                "src",
+                "scripts",
+                "pyproject.toml",
+                "data/metadata",
+            ],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise ManifestValidationError("cannot verify formal-run code state") from exc
+    if completed.stdout.strip():
+        raise ManifestValidationError(
+            "formal run requires clean tracked code and metadata at the pinned revision"
+        )
 
 
 def _required_text(payload: Mapping[str, object], key: str) -> str:

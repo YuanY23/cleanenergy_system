@@ -41,12 +41,18 @@ def solve_model(
     result = solver.solve(model, tee=tee, load_solutions=False)
     elapsed = perf_counter() - started
     termination = result.solver.termination_condition
+    has_incumbent = False
     if termination in {
         TerminationCondition.optimal,
         TerminationCondition.feasible,
         TerminationCondition.maxTimeLimit,
     }:
-        model.solutions.load_from(result)
+        try:
+            model.solutions.load_from(result)
+            has_incumbent = True
+        except (RuntimeError, TypeError, ValueError):
+            if termination != TerminationCondition.maxTimeLimit:
+                raise
 
     solver_status = str(result.solver.status)
     lower_bound = getattr(result.problem, "lower_bound", None)
@@ -71,6 +77,7 @@ def solve_model(
         "lower_bound": lower_bound,
         "upper_bound": upper_bound,
         "actual_gap": actual_gap,
+        "has_incumbent": has_incumbent,
         "log_path": resolved_log,
     }
 
@@ -79,6 +86,6 @@ def solve_model(
     if termination == TerminationCondition.infeasible:
         return "infeasible"
     if termination == TerminationCondition.maxTimeLimit:
-        return "time_limit"
+        return "time_limit" if has_incumbent else "time_limit_no_solution"
 
     return str(termination)

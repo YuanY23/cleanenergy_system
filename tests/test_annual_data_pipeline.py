@@ -207,6 +207,7 @@ def test_era5_request_includes_utc_days_on_both_local_year_boundaries(
             captured["dataset"] = dataset
             captured["request"] = request
             captured["target"] = target
+            Path(target).write_bytes(b"netcdf-fixture")
 
     target = tmp_path / "era5.nc"
     download_era5_hourly(
@@ -222,6 +223,8 @@ def test_era5_request_includes_utc_days_on_both_local_year_boundaries(
     assert len(request["date"]) == 367
     assert request["time"][0] == "00:00"
     assert request["time"][-1] == "23:00"
+    assert str(captured["target"]).endswith(".part")
+    assert target.read_bytes() == b"netcdf-fixture"
 
 
 class _FakeResponse:

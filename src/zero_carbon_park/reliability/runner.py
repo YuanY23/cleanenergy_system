@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 import pandas as pd
@@ -37,6 +37,7 @@ def run_reliability_event(
     fixed_capacities: Mapping[str, float],
     cost_params: PlanningCostParams,
     event: ReliabilityEvent,
+    solve: Callable[..., str] = solve_model,
 ) -> ReliabilityResult:
     """Solve a deterministic outage/fault event with no grid or external H2."""
 
@@ -93,7 +94,7 @@ def run_reliability_event(
         ),
         sense=minimize,
     )
-    status = solve_model(model, time_limit_seconds=120.0, mip_gap=0.001)
+    status = solve(model, time_limit_seconds=120.0, mip_gap=0.001)
     if status != "optimal":
         raise RuntimeError(f"reliability event {event.event_id} terminated as {status}")
     hourly = extract_capacity_planning_results(model, status)["hourly"]
@@ -117,6 +118,47 @@ def run_reliability_event(
         **metrics,
     }
     return ReliabilityResult(event=event, hourly=hourly, summary=summary)
+
+
+def run_reliability_catalog(
+    annual_workbook: InputWorkbook,
+    *,
+    replay_hourly: pd.DataFrame,
+    fixed_capacities: Mapping[str, float],
+    cost_params: PlanningCostParams,
+    events: tuple[ReliabilityEvent, ...],
+    portfolio_id: str,
+    solve: Callable[..., str] = solve_model,
+) -> dict[str, pd.DataFrame]:
+    """Run a deterministic event catalog and retain portfolio/event lineage."""
+
+    if not events:
+        raise ValueError("reliability catalog must contain at least one event")
+    if not portfolio_id.strip():
+        raise ValueError("portfolio_id must not be empty")
+    results = [
+        run_reliability_event(
+            annual_workbook,
+            replay_hourly=replay_hourly,
+            fixed_capacities=fixed_capacities,
+            cost_params=cost_params,
+            event=event,
+            solve=solve,
+        )
+        for event in events
+    ]
+    summaries = pd.DataFrame([result.summary for result in results])
+    summaries.insert(0, "portfolio_id", portfolio_id)
+    hourly_frames: list[pd.DataFrame] = []
+    for result in results:
+        frame = result.hourly.copy()
+        frame.insert(0, "event_id", result.event.event_id)
+        frame.insert(0, "portfolio_id", portfolio_id)
+        hourly_frames.append(frame)
+    return {
+        "summary": summaries,
+        "hourly": pd.concat(hourly_frames, ignore_index=True),
+    }
 
 
 def _event_timeseries(
@@ -164,4 +206,8 @@ def _pre_event_state(
     return float(row["battery_soc_kwh"]), float(row["h2_storage_kg"])
 
 
-__all__ = ["ReliabilityResult", "run_reliability_event"]
+__all__ = [
+    "ReliabilityResult",
+    "run_reliability_catalog",
+    "run_reliability_event",
+]

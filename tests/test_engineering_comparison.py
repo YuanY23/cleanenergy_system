@@ -76,6 +76,7 @@ def test_comparison_uses_separate_cost_carbon_and_reliability_boundaries() -> No
         natural_gas_factor_kgco2_per_m3=2.0,
     )
     row = result["comparison"].iloc[0]
+    hourly = result["replay_with_carbon"]
 
     assert row["annual_total_cost_cny"] == pytest.approx(103.0)
     assert row["scope1_natural_gas_kgco2"] == pytest.approx(4.0)
@@ -90,6 +91,12 @@ def test_comparison_uses_separate_cost_carbon_and_reliability_boundaries() -> No
     assert row["design_event_ens_kwh"] == 8.0
     assert row["critical_load_supply_ratio"] == 0.95
     assert row["minimum_battery_soc_kwh"] == 2.0
+    assert hourly["location_carbon_kgco2"].sum() == pytest.approx(
+        row["location_total_kgco2"]
+    )
+    assert hourly["zero_carbon_kgco2"].sum() == pytest.approx(
+        row["zero_carbon_total_kgco2"]
+    )
     definitions = result["definitions"].set_index("metric")
     assert definitions.loc["location_total_kgco2", "formula_version"]
     assert "grid_buy_kw" in definitions.loc[
@@ -103,6 +110,17 @@ def test_cost_components_must_reconcile_before_comparison() -> None:
     with pytest.raises(MetricConsistencyError, match="cost identity"):
         build_engineering_comparison(
             broken,
+            _replay(),
+            pd.DataFrame(),
+            carbon_factors=CarbonFactors(),
+            natural_gas_factor_kgco2_per_m3=2.0,
+        )
+
+
+def test_missing_reliability_results_cannot_be_reported_as_perfect_supply() -> None:
+    with pytest.raises(MetricConsistencyError, match="reliability"):
+        build_engineering_comparison(
+            _planning(),
             _replay(),
             pd.DataFrame(),
             carbon_factors=CarbonFactors(),

@@ -205,12 +205,12 @@ def _daily_feature_matrix(
     dates = frame[timestamp_column].dt.date
     if dates.nunique() != 366 or not (dates.value_counts() == 24).all():
         raise ValueError("2024 data must contain 366 complete local days")
-    ordered_dates = list(dict.fromkeys(dates.tolist()))
-    normalized_matrix = np.stack(
-        [
-            standardized.loc[dates == day].to_numpy().T.reshape(-1)
-            for day in ordered_dates
-        ]
+    ordered_dates = dates.iloc[::24].tolist()
+    normalized_matrix = (
+        standardized.to_numpy()
+        .reshape(366, 24, len(feature_columns))
+        .transpose(0, 2, 1)
+        .reshape(366, -1)
     )
     normalization = pd.DataFrame(
         {

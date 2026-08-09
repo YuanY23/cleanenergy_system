@@ -122,11 +122,14 @@ def run_reliability_event(
 def _event_timeseries(
     annual_timeseries: pd.DataFrame, event: ReliabilityEvent
 ) -> pd.DataFrame:
-    frame = annual_timeseries.copy(deep=True)
-    timestamps = pd.to_datetime(frame["timestamp_local"], errors="coerce")
+    timestamps = pd.to_datetime(
+        annual_timeseries["timestamp_local"], errors="coerce"
+    )
     start = pd.Timestamp(event.start_timestamp)
     end = start + pd.Timedelta(hours=event.duration_hours)
-    selected = frame.loc[(timestamps >= start) & (timestamps < end)].copy()
+    selected = annual_timeseries.loc[
+        (timestamps >= start) & (timestamps < end)
+    ].copy(deep=True)
     if len(selected) != event.duration_hours:
         raise ValueError("annual inputs do not fully cover the reliability event")
     selected.reset_index(drop=True, inplace=True)

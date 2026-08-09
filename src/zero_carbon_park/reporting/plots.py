@@ -478,7 +478,17 @@ def _portfolio_name_map(summary: pd.DataFrame) -> dict[object, str]:
 
 
 def _engineering_palette(count: int) -> list[str]:
-    palette = ["#32628F", "#2E8B57", "#D17A22", "#7957A8", "#18A6A6", "#B34D4D"]
+    palette = [
+        ENGINEERING_COLORS[key]
+        for key in (
+            "economic",
+            "low_carbon",
+            "resilience",
+            "battery",
+            "hydrogen",
+            "carbon_location",
+        )
+    ]
     return [palette[index % len(palette)] for index in range(count)]
 
 

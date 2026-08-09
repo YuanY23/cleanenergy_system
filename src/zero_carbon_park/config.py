@@ -181,12 +181,12 @@ def build_run_manifest(
 
     run_dir = paths.artifacts / "runs" / selected_run_id
     manifest_path = run_dir / "manifest.json"
-    if run_dir.exists():
+    try:
+        run_dir.mkdir(parents=True, exist_ok=False)
+    except FileExistsError as exc:
         raise ManifestValidationError(
             f"run_id already exists and run directories are immutable: {selected_run_id}"
-        )
-
-    run_dir.mkdir(parents=True)
+        ) from exc
     temporary_path = run_dir / ".manifest.json.tmp"
     temporary_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -232,7 +232,7 @@ def load_verified_manifest(
             raise ManifestValidationError(
                 f"invalid SHA256 for input {logical_name!r}: {expected_hash!r}"
             )
-        input_path = (root_paths.repo_root / Path(relative_path)).resolve()
+        input_path = _resolve_against_root(relative_path, root_paths.repo_root)
         _validate_allowed_input_path(input_path, root_paths)
         if logical_name in logical_names or input_path in resolved_paths:
             raise ManifestValidationError(
@@ -307,7 +307,9 @@ def _prepare_inputs(
 
 
 def _validate_allowed_input_path(input_path: Path, paths: ProjectPaths) -> None:
-    if not any(_is_relative_to(input_path, root.resolve()) for root in paths.allowed_input_roots):
+    if not any(
+        input_path.is_relative_to(root.resolve()) for root in paths.allowed_input_roots
+    ):
         raise ManifestValidationError(
             f"formal inputs must be located under data/raw or data/processed: {input_path}"
         )
@@ -370,11 +372,3 @@ def _resolve_against_root(path: str | Path, repo_root: Path) -> Path:
     if not candidate.is_absolute():
         candidate = repo_root / candidate
     return candidate.resolve()
-
-
-def _is_relative_to(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-    except ValueError:
-        return False
-    return True

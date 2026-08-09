@@ -9,8 +9,9 @@ downstream users can validate already acquired data without CDS credentials.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+import calendar
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import timedelta
 import json
 import os
 from pathlib import Path
@@ -636,4 +637,4 @@ def _pvlib_capacity_factor(
 
 
 def _is_leap_year(year: int) -> bool:
-    return date(year, 12, 31).timetuple().tm_yday == 366
+    return calendar.isleap(year)

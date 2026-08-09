@@ -17,16 +17,6 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILDER = Path(__file__).with_name("build_annual_data_workbook.mjs")
-
-
-def _inside(path: Path, parent: Path) -> bool:
-    try:
-        path.relative_to(parent)
-    except ValueError:
-        return False
-    return True
-
-
 def build_workbook(
     *,
     annual_csv: str | Path,
@@ -41,11 +31,11 @@ def build_workbook(
     processed_root = (ROOT / "data" / "processed").resolve()
     metadata_root = (ROOT / "data" / "metadata").resolve()
     artifacts_root = (ROOT / "artifacts" / "runs").resolve()
-    if not annual.is_file() or not _inside(annual, processed_root):
+    if not annual.is_file() or not annual.is_relative_to(processed_root):
         raise ValueError("annual CSV must be an existing file under data/processed")
-    if not sources.is_file() or not _inside(sources, metadata_root):
+    if not sources.is_file() or not sources.is_relative_to(metadata_root):
         raise ValueError("source registry must be under data/metadata")
-    if not _inside(output, artifacts_root):
+    if not output.is_relative_to(artifacts_root):
         raise ValueError("workbook output must be under artifacts/runs")
 
     runtime_modules = Path(node_modules).resolve()

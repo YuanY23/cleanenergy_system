@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "status": "current",
+  "document_version": "2026-08-09",
+  "project_name": "面向零碳工业园区的电—热—氢—储系统规划与韧性评估",
+  "formal_run": {
+    "run_id": "formal-2024-20260809T131238Z",
+    "status": "complete",
+    "study_year": 2024,
+    "hours_per_portfolio": 8784,
+    "representative_days": 12,
+    "portfolios": ["economic", "low_carbon", "resilience"],
+    "reliability_events_per_portfolio": 18,
+    "model_git_commit": "34a40e7c11bad8b09c7d48c5c37d489151dfdc3b",
+    "manifest": "artifacts/runs/formal-2024-20260809T131238Z/manifest.json",
+    "completion": "artifacts/runs/formal-2024-20260809T131238Z/completion.json",
+    "core_metrics": "artifacts/runs/formal-2024-20260809T131238Z/metrics/portfolio_summary.csv",
+    "capacity_results": "artifacts/runs/formal-2024-20260809T131238Z/planning/planning_capacity.csv",
+    "replay_quality": "artifacts/runs/formal-2024-20260809T131238Z/replay/replay_quality.csv",
+    "reliability_results": "artifacts/runs/formal-2024-20260809T131238Z/reliability/reliability_summary.csv",
+    "report_index": "artifacts/runs/formal-2024-20260809T131238Z/reporting/results_index.csv"
+  },
+  "authoritative_documents": [
+    "交付成果/最新项目/项目介绍.md",
+    "交付成果/最新项目/项目研究报告.md",
+    "交付成果/最新项目/结果与指标参考.md",
+    "交付成果/最新项目/项目交付说明.md",
+    "交付成果/最新项目/复现与更新指南.md"
+  ],
+  "excluded_from_current_conclusions": [
+    "archive/",
+    "交付成果/历史结果归档/",
+    "第一组数据汇总表.xlsx",
+    "鄂尔多斯零碳园区_电热氢储优化调度_数据包.xlsx"
+  ],
+  "mandatory_caveats": [
+    "负荷为公开尺度校准的合成数据，不是企业SCADA实测",
+    "低碳型为时间上限内可行解，实际MIP gap为1.335%",
+    "代表日月度误差门未通过，最终结论以8784小时回放为准",
+    "可靠性结果为确定性压力测试，不构成认证或概率风险承诺"
+  ]
+}

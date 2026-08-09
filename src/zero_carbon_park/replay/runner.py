@@ -32,6 +32,7 @@ class ReplayConfig:
     solver_mip_gap: float = 0.01
     ens_tolerance_kwh: float = 1e-6
     balance_tolerance_kw: float = 1e-5
+    enforce_annual_cycle: bool = True
 
     def __post_init__(self) -> None:
         if self.commit_hours <= 0 or self.lookahead_hours < self.commit_hours:
@@ -85,6 +86,12 @@ def run_rolling_replay(
     ):
         stop = min(start + selected.lookahead_hours, len(timeseries))
         commit_count = min(selected.commit_hours, len(timeseries) - start)
+        is_final_commit = start + commit_count == len(timeseries)
+        terminal_state = (
+            start_state
+            if is_final_commit and selected.enforce_annual_cycle
+            else state
+        )
         window_workbook = _slice_workbook(workbook, start, stop)
         day_id = f"RW{window_number:04d}"
         day = TypicalDayConfig(
@@ -111,8 +118,8 @@ def run_rolling_replay(
             # Until the common builder's optional terminal-state switch is used,
             # a neutral horizon boundary prevents artificial depletion.  State
             # handoff still occurs at the shorter committed boundary.
-            final_battery_soc_kwh=state.battery_soc_kwh,
-            final_h2_inventory_kg=state.h2_inventory_kg,
+            final_battery_soc_kwh=terminal_state.battery_soc_kwh,
+            final_h2_inventory_kg=terminal_state.h2_inventory_kg,
         )
         status = solve(
             model,
@@ -145,6 +152,9 @@ def run_rolling_replay(
                 "start_timestamp": timestamps.iloc[start].isoformat(),
                 "lookahead_hours": stop - start,
                 "commit_hours": commit_count,
+                "annual_cycle_target_applied": bool(
+                    is_final_commit and selected.enforce_annual_cycle
+                ),
                 "initial_battery_soc_kwh": state.battery_soc_kwh,
                 "initial_h2_inventory_kg": state.h2_inventory_kg,
                 "committed_end_battery_soc_kwh": next_state.battery_soc_kwh,

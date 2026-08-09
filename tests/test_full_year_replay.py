@@ -99,6 +99,7 @@ def test_rolling_replay_commits_each_hour_once_and_passes_state() -> None:
         result.windows.iloc[0]["committed_end_battery_soc_kwh"]
     )
     assert result.final_state == ReplayState(0.0, 0.0)
+    assert bool(result.windows.iloc[-1]["annual_cycle_target_applied"])
     assert result.publication_eligible
     assert result.quality_report["ens_total_kwh"] == pytest.approx(0.0)
 

@@ -11,7 +11,7 @@ from zero_carbon_park.data.loader import InputWorkbook
 from zero_carbon_park.optimization.solver import solve_model
 from zero_carbon_park.planning.builder import build_capacity_planning_model
 from zero_carbon_park.planning.cost_params import PlanningCostParams
-from zero_carbon_park.planning.results import extract_capacity_planning_results
+from zero_carbon_park.planning.results import extract_capacity_planning_hourly
 from zero_carbon_park.replay.results import (
     ReplayResult,
     ReplayState,
@@ -143,7 +143,7 @@ def run_rolling_replay(
                 f"window {window_number} starting at {timestamps.iloc[start]} "
                 f"terminated as {status}; no replay result was published"
             )
-        extracted = extract_capacity_planning_results(model, status)["hourly"]
+        extracted = extract_capacity_planning_hourly(model)
         committed = extracted.iloc[:commit_count].copy()
         committed.insert(
             0,
@@ -205,9 +205,9 @@ def run_rolling_replay(
 def _slice_workbook(workbook: InputWorkbook, start: int, stop: int) -> InputWorkbook:
     return InputWorkbook(
         timeseries=workbook.timeseries.iloc[start:stop].reset_index(drop=True).copy(),
-        device_params=workbook.device_params.copy(deep=True),
-        economic_params=workbook.economic_params.copy(deep=True),
-        scenarios=workbook.scenarios.copy(deep=True),
+        device_params=workbook.device_params,
+        economic_params=workbook.economic_params,
+        scenarios=workbook.scenarios,
     )
 
 

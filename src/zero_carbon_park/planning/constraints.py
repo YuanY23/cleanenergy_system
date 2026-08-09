@@ -65,6 +65,10 @@ def add_planning_constraints(model: ConcreteModel) -> None:
         rule=lambda m: m.battery_power_capacity_kw + m.fuel_cell_power_capacity_kw
         >= m.secure_capacity_multiplier * m.peak_critical_load_kw
     )
+    model.secure_battery_duration_constraint = Constraint(
+        rule=lambda m: m.battery_energy_capacity_kwh
+        >= m.secure_battery_duration_hours * m.battery_power_capacity_kw
+    )
 
     def power_balance_rule(m, d, t):
         served_electric_load = (

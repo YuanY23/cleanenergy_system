@@ -15,7 +15,9 @@ from datetime import timedelta
 import json
 import os
 from pathlib import Path
+import tempfile
 from typing import Any
+import zipfile
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -381,6 +383,8 @@ def download_era5_hourly(
     *,
     credentials: CDSCredentials,
     client_factory: Callable[..., Any] | None = None,
+    chunk_by_month: bool = True,
+    chunk_combiner: Callable[[list[Path], Path], None] | None = None,
 ) -> Path:
     """Download ERA5 with the UTC boundary hours needed by the local year."""
 
@@ -412,7 +416,6 @@ def download_era5_hourly(
             "2m_temperature",
             "surface_solar_radiation_downwards",
         ],
-        "date": dates,
         "time": [f"{hour:02d}:00" for hour in range(24)],
         "data_format": "netcdf",
         "download_format": "unarchived",
@@ -425,14 +428,114 @@ def download_era5_hourly(
     }
     target = Path(target_path)
     target.parent.mkdir(parents=True, exist_ok=True)
+    if not chunk_by_month:
+        request["date"] = dates
+        _retrieve_atomic(client, request, target)
+        return target
+
+    chunks_dir = target.parent / "era5_chunks"
+    chunks_dir.mkdir(parents=True, exist_ok=True)
+    chunk_paths: list[Path] = []
+    for month, month_dates in _group_dates_by_month(dates).items():
+        chunk_target = chunks_dir / f"era5_ordos_{month}.nc"
+        month_request = {**request, "date": month_dates}
+        _retrieve_atomic(client, month_request, chunk_target)
+        chunk_paths.append(chunk_target)
+
+    temporary = target.with_name(f".{target.name}.part")
+    if temporary.exists():
+        raise FileExistsError(f"incomplete ERA5 merge already exists: {temporary}")
+    (chunk_combiner or _combine_era5_chunks)(chunk_paths, temporary)
+    if not temporary.is_file() or temporary.stat().st_size == 0:
+        raise AnnualWeatherQualityError("ERA5 merge did not create a non-empty file")
+    temporary.replace(target)
+    return target
+
+
+def _retrieve_atomic(client: Any, request: dict[str, Any], target: Path) -> None:
+    if target.exists():
+        raise FileExistsError(f"ERA5 output already exists and is immutable: {target}")
     temporary = target.with_name(f".{target.name}.part")
     if temporary.exists():
         raise FileExistsError(f"incomplete ERA5 download already exists: {temporary}")
     client.retrieve(ERA5_DATASET, request, str(temporary))
     if not temporary.is_file() or temporary.stat().st_size == 0:
         raise AnnualWeatherQualityError("ERA5 download did not create a non-empty file")
-    temporary.replace(target)
-    return target
+    if zipfile.is_zipfile(temporary):
+        normalized = target.with_name(f".{target.name}.normalized")
+        if normalized.exists():
+            raise FileExistsError(f"incomplete ERA5 normalization exists: {normalized}")
+        _merge_cds_zip_members(temporary, normalized)
+        normalized.replace(target)
+        temporary.unlink()
+    else:
+        temporary.replace(target)
+
+
+def _group_dates_by_month(dates: list[str]) -> dict[str, list[str]]:
+    grouped: dict[str, list[str]] = {}
+    for selected_date in dates:
+        grouped.setdefault(selected_date[:7], []).append(selected_date)
+    return grouped
+
+
+def _combine_era5_chunks(chunk_paths: list[Path], target: Path) -> None:
+    try:
+        import xarray as xr
+    except ImportError as exc:  # pragma: no cover - production dependency path
+        raise RuntimeError("ERA5 chunk merge requires xarray and netcdf4") from exc
+    datasets = []
+    try:
+        for path in chunk_paths:
+            with xr.open_dataset(path) as opened:
+                datasets.append(opened.load())
+        if not datasets:
+            raise AnnualWeatherQualityError("ERA5 chunk list is empty")
+        time_name = "valid_time" if "valid_time" in datasets[0].coords else "time"
+        if time_name not in datasets[0].coords:
+            raise AnnualWeatherQualityError("ERA5 chunks have no time coordinate")
+        combined = xr.concat(datasets, dim=time_name).sortby(time_name)
+        timestamps = pd.Index(combined[time_name].values)
+        if timestamps.has_duplicates:
+            raise AnnualWeatherQualityError("ERA5 chunks contain duplicate timestamps")
+        combined.to_netcdf(target)
+    finally:
+        for dataset in datasets:
+            dataset.close()
+
+
+def _merge_cds_zip_members(archive: Path, target: Path) -> None:
+    try:
+        import xarray as xr
+    except ImportError as exc:  # pragma: no cover - production dependency path
+        raise RuntimeError("ERA5 ZIP normalization requires xarray and netcdf4") from exc
+    datasets = []
+    try:
+        with tempfile.TemporaryDirectory(prefix="era5-cds-zip-") as temp_name:
+            extraction_root = Path(temp_name)
+            with zipfile.ZipFile(archive) as bundle:
+                members = [
+                    member
+                    for member in bundle.infolist()
+                    if not member.is_dir() and member.filename.lower().endswith(".nc")
+                ]
+                if not members:
+                    raise AnnualWeatherQualityError("CDS ZIP contains no NetCDF files")
+                for member in members:
+                    bundle.extract(member, extraction_root)
+            for path in sorted(extraction_root.rglob("*.nc")):
+                with xr.open_dataset(path) as opened:
+                    datasets.append(opened.load())
+            merged = xr.merge(
+                datasets,
+                compat="override",
+                join="exact",
+                combine_attrs="override",
+            )
+            merged.to_netcdf(target)
+    finally:
+        for dataset in datasets:
+            dataset.close()
 
 
 def load_era5_netcdf(path: str | Path) -> pd.DataFrame:
@@ -491,8 +594,22 @@ def fetch_nasa_power_monthly_check(
     }
     response = session.get(NASA_POWER_HOURLY_URL, params=params, timeout=timeout)
     response.raise_for_status()
+    return _nasa_parameters_to_monthly(response.json())
+
+
+def load_nasa_power_monthly_check(path: str | Path) -> pd.DataFrame:
+    """Parse a pinned raw NASA POWER JSON response without a second request."""
+
     try:
-        parameters = response.json()["properties"]["parameter"]
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AnnualWeatherQualityError("cannot read NASA POWER raw response") from exc
+    return _nasa_parameters_to_monthly(payload)
+
+
+def _nasa_parameters_to_monthly(payload: Any) -> pd.DataFrame:
+    try:
+        parameters = payload["properties"]["parameter"]
     except (KeyError, TypeError) as exc:
         raise AnnualWeatherQualityError("NASA POWER response schema is invalid") from exc
 
@@ -506,7 +623,12 @@ def fetch_nasa_power_monthly_check(
         series = series.mask(series <= -999)
         series_by_name[name] = series.sort_index()
 
-    solar_daily = series_by_name["ALLSKY_SFC_SW_DWN"].resample("D").sum(min_count=1)
+    # NASA POWER hourly irradiance is returned as Wh/m2. Convert the daily
+    # accumulation to kWh/m2/day before comparing it with ERA5.
+    solar_daily = (
+        series_by_name["ALLSKY_SFC_SW_DWN"].resample("D").sum(min_count=1)
+        / 1000.0
+    )
     solar_monthly = solar_daily.resample("MS").mean()
     temperature_monthly = series_by_name["T2M"].resample("MS").mean()
     wind_monthly = series_by_name["WS50M"].resample("MS").mean()

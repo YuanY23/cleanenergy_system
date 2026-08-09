@@ -158,6 +158,28 @@ def test_export_revenue_never_credits_operating_carbon():
     assert low_carbon["carbon_accounting_boundary"] == "购电与燃气运行排放；外送电不抵扣"
 
 
+def test_grid_connected_resilience_sizing_still_requires_island_validation():
+    result = solve_engineering_portfolios(
+        _representative_day(),
+        _costs(),
+        capacity_upper_bounds=CAPACITY_BOUNDS,
+        resilience_planning_islanded=False,
+        time_limit_seconds=10.0,
+    )
+
+    resilience = result["summary"].set_index("portfolio_id").loc["resilience"]
+    assert not resilience["islanded_design_basis"]
+    assert resilience["islanded_validation_required"]
+    assert resilience["annual_h2_external_supply_kg"] == pytest.approx(0.0)
+    assert resilience["secure_capacity_margin_kw"] >= -1e-6
+    selected_capacity = result["capacity"].loc[
+        result["capacity"]["portfolio_id"].eq("resilience")
+    ].set_index("capacity_variable")["capacity_value"]
+    assert selected_capacity["battery_energy_capacity_kwh"] >= (
+        4.0 * selected_capacity["battery_power_capacity_kw"] - 1e-6
+    )
+
+
 def test_numerically_identical_solution_is_not_relabelled_as_independent():
     independent, reason = classify_independent_engineering_solution(
         candidate_capacities={name: 1.0 for name in CAPACITY_BOUNDS},

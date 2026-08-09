@@ -73,15 +73,22 @@ def solve_engineering_portfolios(
     low_carbon_cost_ratio: float = 1.10,
     critical_supply_min_ratio: float = 0.99,
     secure_capacity_multiplier: float = 1.20,
+    secure_battery_duration_hours: float = 4.0,
+    resilience_planning_islanded: bool = True,
     time_limit_seconds: float | None = 3_600.0,
     mip_gap: float | None = 0.01,
 ) -> dict[str, pd.DataFrame]:
     """Solve three auditable capacity portfolios from one representative-day input.
 
     The low-carbon case minimizes operating emissions inside a cost budget based
-    on the proven economic optimum. The resilience case is an islanded design
-    screen: no grid import and no externally purchased hydrogen are available.
+    on the proven economic optimum. The resilience case always prohibits
+    externally purchased hydrogen and may be sized either islanded or in normal
+    grid-connected operation followed by fixed-capacity island-event validation.
     The 120% firm-capacity check is an engineering benchmark, not certification.
+    Formal studies may size the resilience portfolio in normal grid-connected
+    operation and reserve islanding for fixed-capacity chronological events;
+    this avoids treating every weighted representative day as an indefinitely
+    repeated island.
     """
 
     _validate_portfolio_inputs(
@@ -89,6 +96,7 @@ def solve_engineering_portfolios(
         low_carbon_cost_ratio=low_carbon_cost_ratio,
         critical_supply_min_ratio=critical_supply_min_ratio,
         secure_capacity_multiplier=secure_capacity_multiplier,
+        secure_battery_duration_hours=secure_battery_duration_hours,
     )
     common = {
         "typical_days": typical_days,
@@ -130,10 +138,11 @@ def solve_engineering_portfolios(
         build_capacity_planning_model(
             **common,
             objective_mode="economic",
-            islanded=True,
+            islanded=resilience_planning_islanded,
             allow_external_h2=False,
             critical_supply_min_ratio=critical_supply_min_ratio,
             secure_capacity_multiplier=secure_capacity_multiplier,
+            secure_battery_duration_hours=secure_battery_duration_hours,
         ),
         time_limit_seconds=time_limit_seconds,
         mip_gap=mip_gap,
@@ -188,6 +197,7 @@ def _validate_portfolio_inputs(
     low_carbon_cost_ratio,
     critical_supply_min_ratio,
     secure_capacity_multiplier,
+    secure_battery_duration_hours,
 ) -> None:
     if set(capacity_upper_bounds) != set(CAPACITY_BOUNDS):
         raise ValueError("capacity_upper_bounds must contain all capacity variables")
@@ -202,6 +212,8 @@ def _validate_portfolio_inputs(
         raise ValueError("critical_supply_min_ratio must be within [0, 1]")
     if secure_capacity_multiplier < 0.0:
         raise ValueError("secure_capacity_multiplier cannot be negative")
+    if secure_battery_duration_hours < 0.0:
+        raise ValueError("secure_battery_duration_hours cannot be negative")
 
 
 def _solve_engineering_case(
@@ -253,6 +265,10 @@ def _solve_engineering_case(
         float(capacities["battery_power_capacity_kw"])
         + float(capacities["fuel_cell_power_capacity_kw"])
     )
+    secure_battery_energy_required = (
+        float(value(model.secure_battery_duration_hours))
+        * float(capacities["battery_power_capacity_kw"])
+    )
     solve_metadata = getattr(model, "solve_metadata", {})
     summary.update(
         {
@@ -274,7 +290,15 @@ def _solve_engineering_case(
             "secure_self_supply_capacity_kw": secure_available,
             "secure_capacity_required_kw": secure_required,
             "secure_capacity_margin_kw": secure_available - secure_required,
+            "secure_battery_duration_hours": float(
+                value(model.secure_battery_duration_hours)
+            ),
+            "secure_battery_energy_margin_kwh": float(
+                capacities["battery_energy_capacity_kwh"]
+            )
+            - secure_battery_energy_required,
             "islanded_design_basis": bool(model.islanded),
+            "islanded_validation_required": portfolio_id == "resilience",
             "external_hydrogen_allowed": bool(model.allow_external_h2),
             "certification_claimed": False,
             "engineering_boundary": "120%保安负荷为工程对标，不构成认证结论",
@@ -330,6 +354,12 @@ def _solve_engineering_case(
                 "constraint": "firm_self_supply_capacity",
                 "margin": summary["secure_capacity_margin_kw"],
                 "unit": "kW",
+            },
+            {
+                "portfolio_id": portfolio_id,
+                "constraint": "secure_battery_duration",
+                "margin": summary["secure_battery_energy_margin_kwh"],
+                "unit": "kWh",
             },
         ]
     )

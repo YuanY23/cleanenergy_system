@@ -12,7 +12,7 @@ from zero_carbon_park.data.loader import InputWorkbook
 from zero_carbon_park.optimization.solver import solve_model
 from zero_carbon_park.planning.builder import build_capacity_planning_model
 from zero_carbon_park.planning.cost_params import PlanningCostParams
-from zero_carbon_park.planning.results import extract_capacity_planning_results
+from zero_carbon_park.planning.results import extract_capacity_planning_hourly
 from zero_carbon_park.reliability.definitions import (
     DEVICE_AVAILABILITY_COLUMNS,
     ReliabilityEvent,
@@ -47,9 +47,9 @@ def run_reliability_event(
     )
     event_workbook = InputWorkbook(
         timeseries=event_frame,
-        device_params=annual_workbook.device_params.copy(deep=True),
-        economic_params=annual_workbook.economic_params.copy(deep=True),
-        scenarios=annual_workbook.scenarios.copy(deep=True),
+        device_params=annual_workbook.device_params,
+        economic_params=annual_workbook.economic_params,
+        scenarios=annual_workbook.scenarios,
     )
     config = TypicalDayConfig(
         day_id=event.event_id,
@@ -97,7 +97,7 @@ def run_reliability_event(
     status = solve(model, time_limit_seconds=120.0, mip_gap=0.001)
     if status != "optimal":
         raise RuntimeError(f"reliability event {event.event_id} terminated as {status}")
-    hourly = extract_capacity_planning_results(model, status)["hourly"]
+    hourly = extract_capacity_planning_hourly(model)
     hourly.insert(0, "timestamp_local", event_frame["timestamp_local"].to_numpy())
     for column in (
         "critical_load_kw",

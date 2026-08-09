@@ -35,6 +35,12 @@ def extract_capacity_planning_results(model, status: str) -> dict[str, pd.DataFr
     }
 
 
+def extract_capacity_planning_hourly(model) -> pd.DataFrame:
+    """Extract only hourly operation for replay and reliability hot paths."""
+
+    return _extract_hourly_results(model)
+
+
 def _extract_capacity_result(model) -> pd.DataFrame:
     rows = []
     for variable_name, name_cn, unit in CAPACITY_VARIABLES:
@@ -43,10 +49,21 @@ def _extract_capacity_result(model) -> pd.DataFrame:
                 "capacity_variable": variable_name,
                 "capacity_name": name_cn,
                 "unit": unit,
-                "capacity_value": value(getattr(model, variable_name)),
+                "capacity_value": _clean_nonnegative(
+                    value(getattr(model, variable_name)), variable_name
+                ),
             }
         )
     return pd.DataFrame(rows)
+
+
+def _clean_nonnegative(selected: float, label: str, *, tolerance: float = 1e-6) -> float:
+    """Normalize solver negative-zero while rejecting material bound violations."""
+
+    numeric = float(selected)
+    if numeric < -tolerance:
+        raise ValueError(f"{label} violates its nonnegative bound: {numeric}")
+    return max(0.0, numeric)
 
 
 def _extract_hourly_results(model) -> pd.DataFrame:

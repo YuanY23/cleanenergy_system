@@ -100,7 +100,15 @@ def evaluate_compression(
             }
             value_range = max(float(actual.max() - actual.min()), 1e-9)
             for metric, (actual_value, estimate_value) in values.items():
-                denominator = max(abs(float(actual_value)), value_range * 1e-9, 1e-9)
+                # Energy is a true relative error against the annual/monthly
+                # total. Shape statistics use the observed range so a P5 of
+                # exactly zero (normal for solar) cannot explode into a
+                # meaningless multi-million-percent error.
+                denominator = (
+                    max(abs(float(actual_value)), 1e-9)
+                    if metric == "energy"
+                    else max(abs(float(actual_value)), value_range, 1e-9)
+                )
                 records.append(
                     {
                         "scope": scope,

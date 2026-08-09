@@ -42,6 +42,7 @@ def build_capacity_planning_model(
     annual_total_cost_cap_cny: float | None = None,
     critical_supply_min_ratio: float | None = None,
     secure_capacity_multiplier: float | None = None,
+    secure_battery_duration_hours: float | None = None,
 ) -> ConcreteModel:
     """Build the common capacity/dispatch model.
 
@@ -65,6 +66,8 @@ def build_capacity_planning_model(
         raise ValueError("critical_supply_min_ratio must be within [0, 1]")
     if secure_capacity_multiplier is not None and secure_capacity_multiplier < 0.0:
         raise ValueError("secure_capacity_multiplier cannot be negative")
+    if secure_battery_duration_hours is not None and secure_battery_duration_hours < 0.0:
+        raise ValueError("secure_battery_duration_hours cannot be negative")
 
     first_workbook = typical_days[0][1]
     device = parameter_frame_to_dict(first_workbook.device_params)
@@ -94,6 +97,13 @@ def build_capacity_planning_model(
         initialize=(
             float(secure_capacity_multiplier)
             if secure_capacity_multiplier is not None
+            else 0.0
+        )
+    )
+    model.secure_battery_duration_hours = Param(
+        initialize=(
+            float(secure_battery_duration_hours)
+            if secure_battery_duration_hours is not None
             else 0.0
         )
     )

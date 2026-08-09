@@ -20,3 +20,9 @@ dist/
 Thumbs.db
 
 *.log
+
+# Fresh formal inputs and run-scoped results are hash-pinned, not committed.
+data/raw/
+data/processed/
+artifacts/runs/
+artifacts/latest.json

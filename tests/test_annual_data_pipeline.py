@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import zipfile
 
 import numpy as np
 import pandas as pd
@@ -17,6 +18,7 @@ from zero_carbon_park.data.annual_pipeline import (
     compare_nasa_power_monthly,
     download_era5_hourly,
     fetch_nasa_power_monthly_check,
+    load_nasa_power_monthly_check,
     transform_era5_hourly,
     validate_annual_weather,
     wind_capacity_factor,
@@ -215,6 +217,7 @@ def test_era5_request_includes_utc_days_on_both_local_year_boundaries(
         target,
         credentials=CDSCredentials("https://cds.example", "abc", "test"),
         client_factory=FakeClient,
+        chunk_by_month=False,
     )
 
     request = captured["request"]
@@ -225,6 +228,83 @@ def test_era5_request_includes_utc_days_on_both_local_year_boundaries(
     assert request["time"][-1] == "23:00"
     assert str(captured["target"]).endswith(".part")
     assert target.read_bytes() == b"netcdf-fixture"
+
+
+def test_era5_download_splits_formal_request_into_monthly_chunks(
+    tmp_path: Path,
+) -> None:
+    requests: list[dict] = []
+
+    class FakeClient:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def retrieve(self, _dataset: str, request: dict, target: str) -> None:
+            requests.append(request)
+            Path(target).write_bytes(b"chunk")
+
+    def combine(chunks: list[Path], target: Path) -> None:
+        assert len(chunks) == 13
+        assert all(path.is_file() for path in chunks)
+        target.write_bytes(b"combined-netcdf")
+
+    target = tmp_path / "era5.nc"
+    download_era5_hourly(
+        AnnualWeatherConfig(),
+        target,
+        credentials=CDSCredentials("https://cds.example", "abc", "test"),
+        client_factory=FakeClient,
+        chunk_combiner=combine,
+    )
+
+    assert len(requests) == 13
+    assert requests[0]["date"] == ["2023-12-31"]
+    assert requests[-1]["date"][-1] == "2024-12-31"
+    assert max(len(request["date"]) for request in requests) == 31
+    assert target.read_bytes() == b"combined-netcdf"
+
+
+def test_cds_zip_with_instant_and_accumulated_streams_is_normalized(
+    tmp_path: Path,
+) -> None:
+    import xarray as xr
+
+    timestamps = pd.date_range("2024-01-01", periods=2, freq="h")
+
+    class FakeClient:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def retrieve(self, _dataset: str, _request: dict, target: str) -> None:
+            instant = tmp_path / "instant.nc"
+            accumulated = tmp_path / "accum.nc"
+            xr.Dataset(
+                {
+                    "u100": ("valid_time", [1.0, 2.0]),
+                    "v100": ("valid_time", [3.0, 4.0]),
+                    "t2m": ("valid_time", [273.0, 274.0]),
+                },
+                coords={"valid_time": timestamps},
+            ).to_netcdf(instant)
+            xr.Dataset(
+                {"ssrd": ("valid_time", [0.0, 3600.0])},
+                coords={"valid_time": timestamps},
+            ).to_netcdf(accumulated)
+            with zipfile.ZipFile(target, "w") as bundle:
+                bundle.write(instant, "instant.nc")
+                bundle.write(accumulated, "accum.nc")
+
+    target = tmp_path / "normalized.nc"
+    download_era5_hourly(
+        AnnualWeatherConfig(),
+        target,
+        credentials=CDSCredentials("https://cds.example", "abc", "test"),
+        client_factory=FakeClient,
+        chunk_by_month=False,
+    )
+
+    with xr.open_dataset(target) as dataset:
+        assert {"u100", "v100", "t2m", "ssrd"}.issubset(dataset.data_vars)
 
 
 class _FakeResponse:
@@ -283,6 +363,18 @@ def test_nasa_power_is_a_separate_monthly_check_not_an_hourly_merge() -> None:
     assert session.last_params["time-standard"] == "UTC"
     assert session.last_params["start"] == "20240101"
     assert session.last_params["end"] == "20241231"
+
+
+def test_pinned_nasa_response_can_be_parsed_without_network(tmp_path: Path) -> None:
+    raw = tmp_path / "nasa.json"
+    raw.write_text(json.dumps(_FakeResponse().json()), encoding="utf-8")
+
+    monthly = load_nasa_power_monthly_check(raw)
+
+    assert list(monthly["month"]) == ["2024-01", "2024-02"]
+    assert monthly["nasa_solar_kwh_m2_day"].tolist() == pytest.approx(
+        [0.002, 0.004]
+    )
 
 
 def test_monthly_cross_check_keeps_era5_100m_and_nasa_50m_wind_distinct() -> None:

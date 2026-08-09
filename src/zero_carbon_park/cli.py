@@ -7,6 +7,11 @@ from pathlib import Path
 
 import pandas as pd
 
+from zero_carbon_park.config import (
+    ManifestValidationError,
+    VerifiedRunManifest,
+    load_verified_manifest,
+)
 from zero_carbon_park.data.loader import export_processed_inputs, load_input_workbook
 from zero_carbon_park.planning.pareto import run_cost_carbon_pareto_analysis
 from zero_carbon_park.planning.runner import run_capacity_planning
@@ -30,6 +35,30 @@ from zero_carbon_park.uncertainty.robust_planning import run_robust_capacity_pla
 
 
 DEFAULT_SCENARIOS = ["S0", "S1", "S2", "S3", "S4", "S5"]
+
+
+def resolve_declared_workbook(
+    manifest_path: str | Path, *, repo_root: str | Path
+) -> tuple[VerifiedRunManifest, Path]:
+    """Resolve the legacy model workbook through a verified formal-run manifest.
+
+    This is the compatibility bridge used while the annual-data entry point is
+    introduced.  It deliberately uses one logical key and never scans the
+    repository for similarly named workbooks.
+    """
+
+    verified = load_verified_manifest(manifest_path, repo_root=repo_root)
+    try:
+        workbook_path = verified.input_paths["model_workbook"]
+    except KeyError as exc:
+        raise ManifestValidationError(
+            "formal manifest must declare the logical input 'model_workbook'"
+        ) from exc
+    if workbook_path.suffix.lower() not in {".xlsx", ".xlsm"}:
+        raise ManifestValidationError(
+            f"model_workbook must be an Excel workbook: {workbook_path}"
+        )
+    return verified, workbook_path
 
 
 def run_full_pipeline(
@@ -100,18 +129,25 @@ def run_full_pipeline(
 def main() -> None:
     """命令行入口。"""
 
-    parser = argparse.ArgumentParser(
-        description="运行零碳园区电-热-氢-储优化调度第一版完整流程。"
+    parser = argparse.ArgumentParser(description="运行零碳园区综合能源系统分析流程。")
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument(
+        "--manifest",
+        help="正式运行清单路径；输入将先校验来源ID和SHA256。",
+    )
+    input_group.add_argument(
+        "--workbook",
+        help="兼容旧流程的显式 Excel 路径（不属于正式基准）。",
     )
     parser.add_argument(
-        "--workbook",
-        required=True,
-        help="输入 Excel 数据包路径。",
+        "--repo-root",
+        default=".",
+        help="项目根目录，供正式清单解析相对路径。",
     )
     parser.add_argument(
         "--output",
-        default="outputs",
-        help="输出目录，默认为 outputs。",
+        default=None,
+        help="输出目录；正式运行默认写入清单所在的独立运行目录。",
     )
     parser.add_argument(
         "--run-typical-days",
@@ -155,24 +191,37 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.run_robust_planning:
-        outputs = run_robust_capacity_planning(args.workbook, args.output)
-    elif args.run_stochastic_planning:
-        outputs = run_stochastic_capacity_planning(args.workbook, args.output)
-    elif args.run_uncertainty_stress_test:
-        outputs = run_uncertainty_stress_test(args.workbook, args.output)
-    elif args.run_pareto_analysis:
-        outputs = run_cost_carbon_pareto_analysis(args.workbook, args.output)
-    elif args.run_investment_sensitivity:
-        outputs = run_investment_sensitivity_analysis(args.workbook, args.output)
-    elif args.run_capacity_planning:
-        outputs = run_capacity_planning(args.workbook, args.output)
-    elif args.run_annualization:
-        outputs = run_annualized_typical_days(args.workbook, args.output)
-    elif args.run_typical_days:
-        outputs = run_typical_day_scenarios(args.workbook, args.output)
+    if args.manifest:
+        verified_manifest, workbook_path = resolve_declared_workbook(
+            args.manifest, repo_root=args.repo_root
+        )
+        output_root = Path(args.output) if args.output else verified_manifest.manifest_path.parent
+        print(f"verified_run_id: {verified_manifest.run_id}")
+        for excluded_path in verified_manifest.excluded_history_paths:
+            print(f"excluded_history: {excluded_path}")
     else:
-        outputs = run_full_pipeline(args.workbook, args.output)
+        workbook_path = Path(args.workbook)
+        output_root = Path(args.output or "outputs")
+        print("legacy_input_mode: results are not eligible for the formal baseline")
+
+    if args.run_robust_planning:
+        outputs = run_robust_capacity_planning(workbook_path, output_root)
+    elif args.run_stochastic_planning:
+        outputs = run_stochastic_capacity_planning(workbook_path, output_root)
+    elif args.run_uncertainty_stress_test:
+        outputs = run_uncertainty_stress_test(workbook_path, output_root)
+    elif args.run_pareto_analysis:
+        outputs = run_cost_carbon_pareto_analysis(workbook_path, output_root)
+    elif args.run_investment_sensitivity:
+        outputs = run_investment_sensitivity_analysis(workbook_path, output_root)
+    elif args.run_capacity_planning:
+        outputs = run_capacity_planning(workbook_path, output_root)
+    elif args.run_annualization:
+        outputs = run_annualized_typical_days(workbook_path, output_root)
+    elif args.run_typical_days:
+        outputs = run_typical_day_scenarios(workbook_path, output_root)
+    else:
+        outputs = run_full_pipeline(workbook_path, output_root)
     for name, path in outputs.items():
         print(f"{name}: {path}")
 

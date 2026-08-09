@@ -1,0 +1,93 @@
+schema_version: 1
+assumptions:
+  - field_name: park_peak_electric_load_mw
+    base_value: 150.0
+    lower_bound: 75.0
+    upper_bound: 225.0
+    unit: MW
+    source_category: engineering_assumption
+    confidence: low
+    source_ids: [ERA5_SINGLE_LEVELS_2024]
+    rationale: >-
+      Public park-scale evidence has not yet been pinned, so the approved plan's
+      150 MW study scale is retained transparently with 50%, 100%, and 150%
+      sensitivities.
+    notes: Synthetic calibration target; never describe as SCADA or measured load.
+
+  - field_name: critical_electric_load_share
+    base_value: 0.30
+    lower_bound: 0.20
+    upper_bound: 0.40
+    unit: fraction
+    source_category: engineering_assumption
+    confidence: low
+    source_ids: [GBT_29328_2018]
+    rationale: >-
+      A bounded share is required to exercise critical-load prioritisation before
+      a real industrial user's security-load list is available.
+    notes: The 120% comparison is applied to the resulting security load, not total load.
+
+  - field_name: important_electric_load_share
+    base_value: 0.40
+    lower_bound: 0.30
+    upper_bound: 0.50
+    unit: fraction
+    source_category: engineering_assumption
+    confidence: low
+    source_ids: [GBT_29328_2018]
+    rationale: >-
+      Separates important but shed-capable processes from critical and interruptible
+      demand in deterministic islanding tests.
+    notes: U4 validates that all load-tier shares sum to one.
+
+  - field_name: peak_heat_load_mw_th
+    base_value: 90.0
+    lower_bound: 45.0
+    upper_bound: 135.0
+    unit: MW_th
+    source_category: engineering_assumption
+    confidence: low
+    source_ids: [ERA5_SINGLE_LEVELS_2024]
+    rationale: >-
+      Initial process-plus-space-heating study scale, subsequently shaped with
+      temperature and calibrated against the electric-load scale.
+    notes: Synthetic heat demand; U4 must publish annual energy and temperature response.
+
+  - field_name: daily_hydrogen_demand_kg
+    base_value: 10000.0
+    lower_bound: 5000.0
+    upper_bound: 15000.0
+    unit: kgH2/day
+    source_category: engineering_assumption
+    confidence: low
+    source_ids: [IEA_HYDROGEN_REVIEW_2025, DOE_PEM_TARGETS]
+    rationale: >-
+      A continuous industrial hydrogen task is needed to test cross-period storage;
+      no park-specific offtake contract is available.
+    notes: Synthetic demand; interruptible fraction is configured separately in U4.
+
+  - field_name: usd_cny_exchange_rate
+    base_value: 7.20
+    lower_bound: 6.50
+    upper_bound: 7.80
+    unit: CNY/USD
+    source_category: engineering_assumption
+    confidence: low
+    source_ids: [IRENA_COSTS_2024, IEA_HYDROGEN_REVIEW_2025]
+    rationale: >-
+      A bounded conversion parameter is required to translate international cost
+      benchmarks; it is not represented as a quoted project exchange rate.
+    notes: U4 should freeze an observation date or replace with a declared planning rate.
+
+  - field_name: international_cost_localisation_factor
+    base_value: 1.00
+    lower_bound: 0.70
+    upper_bound: 1.30
+    unit: fraction
+    source_category: engineering_assumption
+    confidence: low
+    source_ids: [IRENA_COSTS_2024, IEA_HYDROGEN_REVIEW_2025]
+    rationale: >-
+      International installed-cost boundaries differ from domestic EPC scope, so
+      localisation uncertainty is exposed instead of hidden in a point estimate.
+    notes: Report the factor beside every converted CAPEX result.

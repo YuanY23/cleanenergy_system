@@ -135,6 +135,67 @@ def test_device_fault_derates_the_named_device_for_the_event() -> None:
     assert result.summary["ens_critical_kwh"] == pytest.approx(4.0)
 
 
+def test_short_island_event_does_not_force_storage_to_an_artificial_terminal_state() -> None:
+    workbook = _workbook()
+    workbook.timeseries.loc[:, [
+        "electric_load_kw",
+        "critical_load_kw",
+        "important_load_kw",
+        "interruptible_load_kw",
+    ]] = 0.0
+    workbook.timeseries["hydrogen_load_kg"] = 1.0
+    fixed = _fixed()
+    fixed["h2_storage_capacity_kg"] = 4.0
+    replay = _replay_state()
+    replay["h2_storage_kg"] = 4.0
+    event = ReliabilityEvent(
+        event_id="OUTAGE_WITH_SURPLUS_H2_2H",
+        start_timestamp=pd.Timestamp("2024-01-01 00:00", tz="Asia/Shanghai"),
+        duration_hours=2,
+    )
+
+    result = run_reliability_event(
+        workbook,
+        replay_hourly=replay,
+        fixed_capacities=fixed,
+        cost_params=PlanningCostParams(grid_import_limit_kw=100.0),
+        event=event,
+    )
+
+    assert result.hourly["h2_external_supply_kg"].sum() == pytest.approx(0.0)
+    assert result.hourly["h2_storage_kg"].iloc[-1] == pytest.approx(2.0)
+
+
+def test_island_event_reports_unserved_hydrogen_instead_of_becoming_infeasible() -> None:
+    workbook = _workbook()
+    workbook.timeseries.loc[:, [
+        "electric_load_kw",
+        "critical_load_kw",
+        "important_load_kw",
+        "interruptible_load_kw",
+    ]] = 0.0
+    workbook.timeseries["hydrogen_load_kg"] = 1.0
+    replay = _replay_state()
+    replay["h2_storage_kg"] = 0.0
+    event = ReliabilityEvent(
+        event_id="OUTAGE_WITH_H2_SHORTAGE_2H",
+        start_timestamp=pd.Timestamp("2024-01-01 00:00", tz="Asia/Shanghai"),
+        duration_hours=2,
+    )
+
+    result = run_reliability_event(
+        workbook,
+        replay_hourly=replay,
+        fixed_capacities=_fixed(),
+        cost_params=PlanningCostParams(grid_import_limit_kw=100.0),
+        event=event,
+    )
+
+    assert result.hourly["h2_unserved_kg"].sum() == pytest.approx(2.0)
+    assert result.summary["unserved_hydrogen_kg"] == pytest.approx(2.0)
+    assert result.summary["critical_load_supply_ratio"] == pytest.approx(1.0)
+
+
 def test_stress_selector_keeps_pre_state_and_complete_24h_horizon() -> None:
     timestamps = pd.date_range(
         "2024-01-01", periods=72, freq="h", tz="Asia/Shanghai"

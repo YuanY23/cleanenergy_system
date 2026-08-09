@@ -26,3 +26,4 @@ data/raw/
 data/processed/
 artifacts/runs/
 artifacts/latest.json
+archive/failed_runs/

@@ -99,6 +99,7 @@ def _extract_hourly_results(model) -> pd.DataFrame:
                     "h2_discharge_kg": value(model.h2_discharge[d, t]),
                     "h2_storage_kg": value(model.h2_storage[d, t]),
                     "h2_external_supply_kg": value(model.h2_external_supply[d, t]),
+                    "h2_unserved_kg": value(model.h2_unserved[d, t]),
                     "h2_fuel_cell_kg": value(model.h2_fuel_cell[d, t]),
                     "fuel_cell_power_kw": value(model.fuel_cell_power[d, t]),
                     "carbon_emission_kg": value(model.carbon_emission[d, t]),

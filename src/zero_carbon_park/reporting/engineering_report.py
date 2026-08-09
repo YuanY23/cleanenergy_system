@@ -179,6 +179,7 @@ def _build_technical_report(run_id: str, inputs: EngineeringReportInputs) -> str
             "annual_total_cost_cny",
             "zero_carbon_total_kgco2",
             "critical_load_supply_ratio",
+            "hydrogen_supply_ratio",
             "minimum_island_survival_hours",
         )
         if column in inputs.portfolio_summary
@@ -190,6 +191,8 @@ def _build_technical_report(run_id: str, inputs: EngineeringReportInputs) -> str
             "duration_hours",
             "critical_load_supply_ratio",
             "ens_total_kwh",
+            "hydrogen_supply_ratio",
+            "unserved_hydrogen_kg",
         )
         if column in inputs.reliability_summary
     ]

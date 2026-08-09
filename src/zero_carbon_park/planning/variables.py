@@ -105,6 +105,7 @@ def add_operation_variables(model: ConcreteModel) -> None:
     model.h2_storage = Var(model.D, model.T, domain=NonNegativeReals)
     model.is_h2_charging = Var(model.D, model.T, domain=Binary)
     model.h2_external_supply = Var(model.D, model.T, domain=NonNegativeReals)
+    model.h2_unserved = Var(model.D, model.T, domain=NonNegativeReals)
     model.h2_fuel_cell = Var(model.D, model.T, domain=NonNegativeReals)
     model.h2_fuel_cell_segment = Var(
         model.D, model.T, model.FUEL_CELL_SEGMENTS, domain=NonNegativeReals

@@ -29,6 +29,12 @@ def compute_deterministic_reliability_metrics(
     interruptible_ens = float(hourly["load_shed_interruptible_kwh"].sum())
     total_ens = critical_ens + important_ens + interruptible_ens
     critical_demand = float(hourly["critical_load_kw"].sum())
+    hydrogen_demand = float(
+        hourly.get("hydrogen_load_kg", pd.Series(dtype=float)).sum()
+    )
+    unserved_hydrogen = float(
+        hourly.get("h2_unserved_kg", pd.Series(dtype=float)).sum()
+    )
     any_loss = (
         hourly[
             [
@@ -51,6 +57,12 @@ def compute_deterministic_reliability_metrics(
         "ens_total_kwh": total_ens,
         "critical_load_supply_ratio": (
             1.0 - critical_ens / critical_demand if critical_demand > 0 else 1.0
+        ),
+        "unserved_hydrogen_kg": unserved_hydrogen,
+        "hydrogen_supply_ratio": (
+            1.0 - unserved_hydrogen / hydrogen_demand
+            if hydrogen_demand > 0
+            else 1.0
         ),
         "loss_of_load_hours": int(any_loss.sum()),
         "max_consecutive_loss_hours": _max_consecutive_true(any_loss),

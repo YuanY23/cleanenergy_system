@@ -210,6 +210,8 @@ def _reliability_metrics(
             "loss_of_load_hours",
             "max_consecutive_loss_hours",
             "island_survival_hours",
+            "unserved_hydrogen_kg",
+            "hydrogen_supply_ratio",
         },
         "reliability summary",
     )
@@ -231,6 +233,10 @@ def _reliability_metrics(
             selected["max_consecutive_loss_hours"].max()
         ),
         "minimum_island_survival_hours": int(selected["island_survival_hours"].min()),
+        "design_event_unserved_hydrogen_kg": float(
+            selected["unserved_hydrogen_kg"].max()
+        ),
+        "hydrogen_supply_ratio": float(selected["hydrogen_supply_ratio"].min()),
     }
 
 
@@ -277,6 +283,10 @@ def _metric_definitions() -> pd.DataFrame:
         "critical_load_supply_ratio": (
             "1 - critical ENS / critical demand for deterministic design events",
             ["ens_critical_kwh", "critical_load_supply_ratio"],
+        ),
+        "hydrogen_supply_ratio": (
+            "1 - unserved hydrogen / hydrogen demand for deterministic design events",
+            ["unserved_hydrogen_kg", "hydrogen_supply_ratio"],
         ),
     }
     return pd.DataFrame(

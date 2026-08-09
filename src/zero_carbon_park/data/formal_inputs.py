@@ -130,6 +130,7 @@ def build_annual_model_workbook(
                 "critical_load_shed_penalty_cny_per_kwh": 100_000.0,
                 "important_load_shed_penalty_cny_per_kwh": 10_000.0,
                 "interruptible_load_shed_penalty_cny_per_kwh": 1_000.0,
+                "hydrogen_unserved_penalty_cny_per_kg": 100_000.0,
             }
         ),
         scenarios=pd.DataFrame(),

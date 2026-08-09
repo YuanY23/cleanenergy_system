@@ -33,6 +33,7 @@ def build_capacity_planning_model(
     capacity_upper_bounds: Mapping[str, float] | None = None,
     islanded: bool = False,
     allow_external_h2: bool | None = None,
+    allow_hydrogen_shedding: bool = False,
     initial_battery_soc_kwh: float | Mapping[str, float] | None = None,
     final_battery_soc_kwh: float | Mapping[str, float] | None = None,
     initial_h2_inventory_kg: float | Mapping[str, float] | None = None,
@@ -43,6 +44,7 @@ def build_capacity_planning_model(
     critical_supply_min_ratio: float | None = None,
     secure_capacity_multiplier: float | None = None,
     secure_battery_duration_hours: float | None = None,
+    enforce_terminal_states: bool = True,
 ) -> ConcreteModel:
     """Build the common capacity/dispatch model.
 
@@ -80,8 +82,10 @@ def build_capacity_planning_model(
     model.T = RangeSet(0, last_hour)
     model.islanded = bool(islanded)
     model.allow_external_h2 = bool(not islanded if allow_external_h2 is None else allow_external_h2)
+    model.allow_hydrogen_shedding = bool(allow_hydrogen_shedding)
     model.performance_curve_mode = performance_curve_mode
     model.objective_mode = objective_mode
+    model.enforce_terminal_states = bool(enforce_terminal_states)
     if islanded and model.allow_external_h2:
         raise ValueError("islanded operation cannot enable external hydrogen supply")
 
@@ -309,6 +313,11 @@ def _add_economic_params(model: ConcreteModel, economic: dict[str, float]) -> No
     model.fuel_cell_om = Param(initialize=float(economic["fuel_cell_om"]))
     model.h2_external_supply_cost = Param(
         initialize=float(economic.get("h2_external_supply_cost", 1000.0))
+    )
+    model.hydrogen_unserved_penalty = Param(
+        initialize=float(
+            economic.get("hydrogen_unserved_penalty_cny_per_kg", 100_000.0)
+        )
     )
     model.green_power_min_share = Param(
         initialize=float(economic.get("green_power_min_share", 0.0))

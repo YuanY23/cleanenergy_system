@@ -213,6 +213,8 @@ def add_planning_constraints(model: ConcreteModel) -> None:
     )
 
     def battery_terminal_rule(m, d):
+        if not m.enforce_terminal_states:
+            return Constraint.Skip
         terminal = _initial_state(
             m, "final_battery_soc_kwh", "battery_energy_capacity_kwh", d
         )
@@ -407,6 +409,8 @@ def add_planning_constraints(model: ConcreteModel) -> None:
     )
 
     def h2_terminal_rule(m, d):
+        if not m.enforce_terminal_states:
+            return Constraint.Skip
         terminal = _initial_state(
             m, "final_h2_inventory_kg", "h2_storage_capacity_kg", d
         )
@@ -419,6 +423,12 @@ def add_planning_constraints(model: ConcreteModel) -> None:
         rule=lambda m, d, t: m.h2_external_supply[d, t]
         <= m.h2_external_supply_limit_kg_per_hour
         * m.h2_external_available_ratio[d, t],
+    )
+    model.h2_unserved_limit_constraint = Constraint(
+        model.D,
+        model.T,
+        rule=lambda m, d, t: m.h2_unserved[d, t]
+        <= m.hydrogen_load[d, t] * float(m.allow_hydrogen_shedding),
     )
 
     fuel_cell_big_m = _upper_bound(model.fuel_cell_power_capacity_kw, 1.0e9)
@@ -546,6 +556,7 @@ def add_planning_constraints(model: ConcreteModel) -> None:
         rule=lambda m, d, t: m.h2_production[d, t]
         + m.h2_discharge[d, t]
         + m.h2_external_supply[d, t]
+        + m.h2_unserved[d, t]
         == m.hydrogen_load[d, t] + m.h2_charge[d, t] + m.h2_fuel_cell[d, t],
     )
     model.fuel_cell_backup_capacity_constraint = Constraint(

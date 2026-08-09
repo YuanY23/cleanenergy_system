@@ -65,6 +65,8 @@ def test_comparison_uses_separate_cost_carbon_and_reliability_boundaries() -> No
                 "loss_of_load_hours": 3,
                 "max_consecutive_loss_hours": 2,
                 "island_survival_hours": 8,
+                "unserved_hydrogen_kg": 3.0,
+                "hydrogen_supply_ratio": 0.88,
             }
         ]
     )
@@ -90,6 +92,8 @@ def test_comparison_uses_separate_cost_carbon_and_reliability_boundaries() -> No
     assert row["normal_year_ens_kwh"] == 0.0
     assert row["design_event_ens_kwh"] == 8.0
     assert row["critical_load_supply_ratio"] == 0.95
+    assert row["design_event_unserved_hydrogen_kg"] == 3.0
+    assert row["hydrogen_supply_ratio"] == 0.88
     assert row["minimum_battery_soc_kwh"] == 2.0
     assert hourly["location_carbon_kgco2"].sum() == pytest.approx(
         row["location_total_kgco2"]

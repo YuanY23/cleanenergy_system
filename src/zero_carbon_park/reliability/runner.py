@@ -72,14 +72,10 @@ def run_reliability_event(
         fixed_capacities=fixed_capacities,
         islanded=True,
         allow_external_h2=False,
+        allow_hydrogen_shedding=True,
         initial_battery_soc_kwh=initial_battery,
-        final_battery_soc_kwh=(
-            initial_battery if "battery" in event.failed_devices else 0.0
-        ),
         initial_h2_inventory_kg=initial_h2,
-        final_h2_inventory_kg=(
-            initial_h2 if "fuel_cell" in event.failed_devices else 0.0
-        ),
+        enforce_terminal_states=False,
     )
     # Among solutions with identical tiered ENS, defer critical curtailment as
     # long as physically possible so "survival hours" has its engineering

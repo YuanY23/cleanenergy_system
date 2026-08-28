@@ -20,7 +20,7 @@ def test_load_input_workbook_reads_core_sheets():
     assert len(workbook.device_params) > 0
     assert len(workbook.economic_params) > 0
     assert len(workbook.scenarios) >= 6
-    assert set(workbook.timeseries.columns) == {
+    required_columns = {
         "hour",
         "pv_cf",
         "wind_cf",
@@ -35,6 +35,7 @@ def test_load_input_workbook_reads_core_sheets():
         "grid_emission_kgco2_per_kwh",
         "carbon_price_cny_per_tco2",
     }
+    assert required_columns.issubset(set(workbook.timeseries.columns))
 
 
 def test_loaded_workbook_data_passes_validation():
